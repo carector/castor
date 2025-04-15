@@ -40,3 +40,13 @@ DIRECTION_KEYS: Final = {
     KeySym.u: (1, -1),
     KeySym.n: (1, 1),
 }
+
+gameframe_left: Final = 21
+gameframe_right: Final = 79
+gameframe_top: Final = 1
+gameframe_bottom: Final = 39
+
+logframe_bottom: Final = 49
+logframe_top: Final = 41
+logframe_left: Final = 21
+logframe_right: Final = 79

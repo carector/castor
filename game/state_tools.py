@@ -12,7 +12,7 @@ def main_draw() -> None:
         return
     g.console.clear()
     g.states[-1].on_draw(g.console)
-    g.context.present(g.console)
+    g.context.present(g.console, integer_scaling=True)
 
 def apply_state_result(result: StateResult) -> None:
     match result:

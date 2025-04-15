@@ -17,3 +17,6 @@ states: list[game.state.States] = []
 
 console: tcod.console.Console
 """The current main console."""
+
+#player: object
+"""Singleton reference to player object"""
