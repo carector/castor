@@ -1,8 +1,10 @@
 """Global constants are stored here."""
 from __future__ import annotations
+import soundfile
 import attrs
 import tcod.event
 import tcod.console
+import tcod.sdl.audio
 from tcod.event import KeySym
 
 from game import g
@@ -57,6 +59,13 @@ class InGame(State):
     """Primary in-game state.\n
     States will always use g.world to access the ECS registry."""
     
+    def __init__(self) -> None:
+        # Play music
+        g.mixer = tcod.sdl.audio.BasicMixer(tcod.sdl.audio.open())
+        sound, sample_rate = soundfile.read("data/mus/mus_sadspiritiv.ogg")
+        sound = g.mixer.device.convert(sound, sample_rate)
+        channel = g.mixer.play(sound)
+    
     # Handle event draw
     def on_draw(self, console: tcod.console.Console) -> None:
         """Draw the standard screen."""
@@ -102,6 +111,7 @@ class InGame(State):
             
             # Handle quit
             case tcod.event.KeyDown(sym=KeySym.ESCAPE):
+                g.mixer.stop()
                 return Push(MainMenu())
             case tcod.event.Quit:
                 raise SystemExit

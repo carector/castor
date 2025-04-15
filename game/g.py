@@ -5,6 +5,7 @@ from __future__ import annotations
 import game.state
 import tcod.context
 import tcod.ecs
+import tcod.sdl.audio
 
 context: tcod.context.Context
 """The window managed by tcod."""
@@ -17,6 +18,9 @@ states: list[game.state.States] = []
 
 console: tcod.console.Console
 """The current main console."""
+
+mixer: tcod.sdl.audio.BasicMixer
+"""Mixer for handling game music."""
 
 #player: object
 """Singleton reference to player object"""
