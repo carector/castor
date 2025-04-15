@@ -1,2 +1,4 @@
 tcod
+tcod-ecs
 soundfile
+attrs
