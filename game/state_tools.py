@@ -22,7 +22,7 @@ def apply_state_result(result: StateResult) -> None:
             g.states.pop()
         case Reset(state=state):
             while g.states:
-                apply_state_result(Pop())
+                apply_state_result(Pop(state))
             apply_state_result(Push(state))
         case None:
             pass

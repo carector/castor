@@ -28,9 +28,7 @@ def main() -> None:
     
     tcod.tileset.procedural_block_elements(tileset=tileset)
     g.console = tcod.console.Console(80, 50)
-    g.states = [game.states.InGame()]    
-    g.world = game.world_tools.new_world()
-    
+    g.states = [game.states.MainMenu()]
     # Game loop
     with tcod.context.new(tileset=tileset, console=g.console) as g.context:
         game.state_tools.main_loop()

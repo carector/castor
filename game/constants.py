@@ -3,6 +3,13 @@ from __future__ import annotations
 from typing import Final
 from tcod.event import KeySym
 
+ACCEPT_KEYS: Final = [
+    KeySym.RETURN,
+    KeySym.RETURN2,
+    KeySym.KP_ENTER,
+    KeySym.z
+]
+
 DIRECTION_KEYS: Final = {
     # Arrow keys
     KeySym.LEFT: (-1, 0),
