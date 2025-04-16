@@ -18,9 +18,23 @@ class MenuItem(Protocol):
     def on_event(self, event: tcod.event.Event):
         """Handle events passed to the menu item"""
         
-    def on_draw(self, console: tcod.console.Console, x: int, y: int, highlight: bool) -> None:
+    def on_draw(self, console: tcod.console.Console, x: int, y: int, w: int, highlight: bool) -> None:
         """Draw menu item at the given position"""
-        
+
+@attrs.define()
+class TextItem(MenuItem):
+    """Standard static text menu item"""
+    
+    label: str
+    
+    def on_event(self, event: tcod.event.Event):
+        pass
+    
+    def on_draw(self, console: tcod.console.Console, x: int, y: int, w: int, highlight: bool) -> None:
+        """ Render label of item"""
+        console.print(x, y, self.label, width=w, fg=(255, 255, 255), bg=(64, 64, 64) if highlight else (0, 0, 0))
+
+
 @attrs.define()
 class SelectItem(MenuItem):
     """Clickable menu item"""
@@ -38,10 +52,30 @@ class SelectItem(MenuItem):
             case _:
                 return None
             
-    def on_draw(self, console: tcod.console.Console, x: int, y: int, highlight: bool) -> None:
+    def on_draw(self, console: tcod.console.Console, x: int, y: int, w: int, highlight: bool) -> None:
         """Render label of item"""
-        console.print(x, y, self.label, fg=(255, 255, 255), bg=(64, 64, 64) if highlight else (0, 0, 0))
+        console.print(x, y, self.label, width=w, fg=(255, 255, 255), bg=(64, 64, 64) if highlight else (0, 0, 0))
+
+@attrs.define()
+class LogMenu():
+    """Console log for recent game happenings"""
     
+    x: int
+    y: int
+    w: int
+    h: int
+    items: list[MenuItem] = attrs.Factory(list)
+    
+    def add_item(self, label: str) -> None:
+        self.items.insert(0, TextItem(label=label))
+        
+    def clear(self) -> None:
+        self.items.clear()
+    
+    def on_draw(self, console: tcod.console.Console) -> None:
+        for i in range(min(self.h, len(self.items))):
+            self.items[i].on_draw(console=console, x=self.x, y=self.y-i, w=self.w, highlight=False)    
+
 @attrs.define()
 class ListMenu(State):
     """Simple list menu state"""
@@ -50,6 +84,7 @@ class ListMenu(State):
     selected: int | None = 0
     x: int = 0
     y: int = 0
+    w: int = 100
     
     def on_event(self, event: tcod.event.Event) -> StateResult:
         """Handle events for menus"""
@@ -92,4 +127,4 @@ class ListMenu(State):
         """Render the menu"""
         game.state_tools.draw_previous_state(self, console)
         for i, item in enumerate(self.items):
-            item.on_draw(console, x=self.x, y=self.y + i, highlight=(i == self.selected))
+            item.on_draw(console, x=self.x, y=self.y + i, w=self.w, highlight=(i == self.selected))

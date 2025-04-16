@@ -14,6 +14,7 @@ from game.tags import IsItem, IsPlayer
 from game.state import State, StateResult, Pop, Push, Reset
 import game.menus
 import game.world_tools
+from tcod import libtcodpy
 
 @attrs.define()
 class MainMenu(game.menus.ListMenu):
@@ -42,6 +43,7 @@ class MainMenu(game.menus.ListMenu):
     @staticmethod        
     def new_game() -> StateResult:
         g.world = game.world_tools.new_world()
+        g.log = game.menus.LogMenu(x=21, y=48, w=58, h=8)
         return Reset(InGame())
 
     
@@ -59,26 +61,31 @@ class InGame(State):
     """Primary in-game state.\n
     States will always use g.world to access the ECS registry."""
     
-    def __init__(self) -> None:
+    #def __init__(self) -> None:
         # Play music
-        g.mixer = tcod.sdl.audio.BasicMixer(tcod.sdl.audio.open())
-        sound, sample_rate = soundfile.read("data/mus/mus_sadspiritiv.ogg")
-        sound = g.mixer.device.convert(sound, sample_rate)
-        channel = g.mixer.play(sound)
+        # g.mixer = tcod.sdl.audio.BasicMixer(tcod.sdl.audio.open())
+        # sound, sample_rate = soundfile.read("data/mus/mus_sadspiritiv.ogg")
+        # sound = g.mixer.device.convert(sound, sample_rate)
+        # channel = g.mixer.play(sound)
     
     # Handle event draw
     def on_draw(self, console: tcod.console.Console) -> None:
         """Draw the standard screen."""
         (player,) = g.world.Q.all_of(components=[], tags=[IsPlayer])
         player_pos = player.components[Position]
-        offset_x = player_pos.x - 50
-        offset_y = player_pos.y - 25
+        offset_x = player_pos.x - 49
+        offset_y = player_pos.y - 20
         
-        console.draw_frame(0, 0, 20, 40)    # Inventory frame
-        console.draw_frame(80, 0, 20, 50)   # Right panel frame
-        console.draw_frame(20, 0, 60, 40)   # Game frame
-        console.draw_frame(0, 40, 20, 10)   # World stats frame
-        console.draw_frame(20, 40, 60, 10)  # Log frame
+        gameframe_decor = "╝═╚║ ║╗═╔"
+        console.draw_frame(0, 0, 20, 40, fg=(128, 128, 128), decoration=gameframe_decor)    # Inventory frame
+        console.draw_frame(80, 0, 20, 50, fg=(128, 128, 128), decoration=gameframe_decor)   # Right panel frame
+        console.draw_frame(20, 0, 60, 40, fg=(255, 200, 255), decoration=gameframe_decor)   # Game frame
+        console.print(x=20, y=0, width=60, height=1, fg=(255, 255, 0), string="World of Wowzers", alignment=libtcodpy.CENTER)
+        console.draw_frame(0, 40, 20, 10, fg=(128, 128, 128), decoration=gameframe_decor)   # World stats frame
+        console.draw_frame(20, 40, 60, 10, fg=(128, 128, 128), decoration=gameframe_decor)  # Log frame
+        
+        
+        g.log.on_draw(console=console)
         
         # We can draw entities if they have both a Position and a Graphic
         for entity in g.world.Q.all_of(components=[Position, Graphic]):
@@ -105,13 +112,13 @@ class InGame(State):
                 for gold in g.world.Q.all_of(components=[Gold], tags=[player.components[Position], IsItem]):
                     player.components[Gold] += gold.components[Gold]
                     text = f"Picked up {gold.components[Gold]}g, total: {player.components[Gold]}g"
-                    g.world[None].components[("Text", str)] = text
+                    g.log.add_item(f"Picked up {gold.components[Gold]}g, total: {player.components[Gold]}g")
                     gold.clear()
                 return None
             
             # Handle quit
             case tcod.event.KeyDown(sym=KeySym.ESCAPE):
-                g.mixer.stop()
+                #g.mixer.stop()
                 return Push(MainMenu())
             case tcod.event.Quit:
                 raise SystemExit

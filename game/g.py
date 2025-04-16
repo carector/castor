@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import game.state
+import game.menus
 import tcod.context
 import tcod.ecs
 import tcod.sdl.audio
@@ -22,5 +23,7 @@ console: tcod.console.Console
 mixer: tcod.sdl.audio.BasicMixer
 """Mixer for handling game music."""
 
+log: game.menus.LogMenu
+
 #player: object
-"""Singleton reference to player object"""
+#"""Singleton reference to player object"""
