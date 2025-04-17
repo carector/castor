@@ -9,9 +9,9 @@ import numpy as np
 from tcod.event import KeySym
 
 import game.g as g
-from game.components import Gold, Graphic, Position
-from game.constants import DIRECTION_KEYS, gameframe_left, gameframe_right, gameframe_top, gameframe_bottom, logframe_bottom, logframe_top, logframe_right, logframe_left
-from game.tags import IsItem, IsPlayer
+from game.components import Gold, Graphic, Position, Actor
+from game.constants import DIRECTION_KEYS, NOISE_COLLISION_THRESH, gameframe_left, gameframe_right, gameframe_top, gameframe_bottom, logframe_bottom, logframe_top, logframe_right, logframe_left
+from game.tags import IsItem, IsPlayer, IsActor
 from game.state import State, StateResult, Pop, Push, Reset
 import game.menus
 import game.world_tools
@@ -82,35 +82,46 @@ class InGame(State):
         
         # Windows
         gameframe_decor = "╝═╚║ ║╗═╔"
-        console.draw_frame(0, 0, 20, 40, fg=(128, 128, 128), decoration=gameframe_decor)    # Inventory frame
-        console.draw_frame(80, 0, 20, 50, fg=(128, 128, 128), decoration=gameframe_decor)   # Right panel frame
+        console.draw_frame(0, 0, 20, 40, fg=(128, 128, 128), decoration=gameframe_decor)    # Dialog frame
+        console.draw_frame(80, 0, 20, 50, fg=(128, 128, 128), decoration=gameframe_decor)   # Inventory frame
         console.draw_frame(20, 0, 60, 40, fg=(200, 200, 255), decoration=gameframe_decor)   # Game frame
         console.print(x=20, y=0, width=60, height=1, fg=(255, 255, 0), string="World of Wowzers", alignment=libtcodpy.CENTER)
         console.draw_frame(0, 40, 20, 10, fg=(128, 128, 128), decoration=gameframe_decor)   # World stats frame
         console.draw_frame(20, 40, 60, 10, fg=(128, 128, 128), decoration=gameframe_decor)  # Log frame
         g.log.on_draw(console=console)
         
+        # Current actor info
+        if g.current_actor is not None:
+            console.print(x=0, y=0, width=20, height=1, fg=(255, 255, 0), string=g.current_actor.name, alignment=libtcodpy.CENTER)
+            console.print(x=2, y=2, width=16, height=36, fg=(255, 255, 255), string=g.current_actor.text)
+            #for i in range(g.current_actor.choices):
+                
+            
         # Player coords
-        console.print(x=1, y=48, text=f"({player_pos.x}, {player_pos.y})", fg=(255, 255, 0))
+        console.print(x=0, y=47, width=20, alignment=libtcodpy.CENTER, text=f"({player_pos.x}, {player_pos.y})", fg=(255, 255, 0))
         
         # Terrain
-        scale = 0.03
-        grid = g.noise[tcod.noise.grid(
+        scale = 0.025
+        g.grid = g.noise[tcod.noise.grid(
             shape=(58, 38), 
             scale=scale, 
             indexing="ij", 
             origin=(offset_x*scale, offset_y*scale))
         ]
         
-        it = np.nditer(grid, flags=['multi_index'])
+        it = np.nditer(g.grid, flags=['multi_index'])
         for pos in it:
             ch = ord("^")
-            if(pos < 0.3): continue
-            if(pos > 0.7): ch = ord("V")
-            console.rgb[["ch", "fg"]][it.multi_index[1] + 1, it.multi_index[0] + 21] = ch, (0, 128, 0)
+            col = (0, 128, 0)
+            if(pos < -0.25): 
+                ch = ord(".")
+                col = (32, 32, 32)
+            elif(pos <= 0): col = (153, 141, 85)
+            if(pos > 0.5): ch = ord("V")
+            console.rgb[["ch", "fg"]][it.multi_index[1] + 1, it.multi_index[0] + 21] = ch, col
                 
             
-        # We can draw entities if they have both a Position and a Graphic
+        # Entities
         for entity in g.world.Q.all_of(components=[Position, Graphic]):
             pos = entity.components[Position]
             graphic = entity.components[Graphic]
@@ -125,6 +136,16 @@ class InGame(State):
         match event:
             # Movement
             case tcod.event.KeyDown(sym=sym) if sym in DIRECTION_KEYS:
+                player_pos = player.components[Position]
+                # Check for actor collision
+                for actor in g.world.Q.all_of(tags=[player.components[Position] + DIRECTION_KEYS[sym], IsActor]): 
+                    actor.components[Actor].on_interact()
+                    return
+                g.current_actor = None
+
+                # Check for terrain collision
+                val = g.grid[28 + DIRECTION_KEYS[sym][0], 19 + DIRECTION_KEYS[sym][1]]
+                if val > NOISE_COLLISION_THRESH: return None
                 player.components[Position] += DIRECTION_KEYS[sym]
                 
                 # Pick up gold on the same space as the player

@@ -2,7 +2,7 @@
 from __future__ import annotations
 from random import Random
 from tcod.ecs import Registry
-from game.components import Gold, Graphic, Position
+from game.components import Gold, Graphic, Position, Actor
 from game.tags import IsActor, IsItem, IsPlayer
 
 import tcod.noise
@@ -66,6 +66,16 @@ def new_world() -> Registry:
     player.components[Graphic] = Graphic(ord("@"), fg=(255, 106, 0)) # 24 100 100
     player.components[Gold] = 0
     player.tags |= {IsPlayer, IsActor}
+    
+    # Actor test
+    actor = world[object()]
+    actor.components[Actor] = Actor(
+        name="Evil sign", 
+        text="Welcome to evil town. We're all evil here. We're really good at it.\n\nDon't test us.",
+        choices={("O-okay, I'm sorry...", "Leave")})
+    actor.components[Graphic] = Graphic(ord("Φ"), fg=(127, 51, 0))
+    actor.components[Position] = Position(-8, 0)
+    actor.tags |= {IsActor}
     
     # Random gold placement
     for _ in range(10):

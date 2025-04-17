@@ -2,6 +2,8 @@
     (Basically singleton)"""
 from __future__ import annotations
 
+import numpy as np
+import game.components
 import game.state
 import game.menus
 import tcod.context
@@ -27,6 +29,13 @@ log: game.menus.LogMenu
 
 noise: tcod.noise.Noise
 """Sampler for generating terrain"""
+
+grid: np.ndarray
+"""Final rendered noise grid from this frame."""
+
+current_actor: game.components.Actor = None
+"""Current actor the player is interacting with."""
+
 # Current idea:
 # - Use a constant seed game-wide
 # - Find interesting spots and place handcrafted encounters there

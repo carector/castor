@@ -4,6 +4,7 @@ from typing import Final, Self
 import attrs
 import tcod.ecs.callbacks
 from tcod.ecs import Entity
+import game.g as g
 
 
 @attrs.define(frozen=True)
@@ -32,6 +33,20 @@ class Graphic:
 
 # @attrs.define(frozen=True)
 # class Box:
+
+@attrs.define(frozen=True)
+class Actor:
+    """Displays text on interaction"""
+    
+    name: str = "Sign"
+    text: str = "This sign is blank."
+    interact_msg: str = "Read a sign"
+    choices: tuple[(str, str)] = {}
+    
+    def on_interact(self):
+        if g.current_actor == self: return
+        g.current_actor = self
+        g.log.add_item(self.interact_msg)
     
 
 Gold: Final = ("Gold", int)

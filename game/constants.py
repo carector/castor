@@ -50,3 +50,5 @@ logframe_bottom: Final = 49
 logframe_top: Final = 41
 logframe_left: Final = 21
 logframe_right: Final = 79
+
+NOISE_COLLISION_THRESH = 0.7

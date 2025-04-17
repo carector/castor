@@ -27,9 +27,9 @@ def main() -> None:
         algorithm=tcod.noise.Algorithm.SIMPLEX,
         implementation=tcod.noise.Implementation.FBM,
         #lacunarity=
-        hurst=0.75,
+        hurst=1,
         octaves=8,
-        seed=67182141
+        seed=10491049
     )
     
     # Game loop
