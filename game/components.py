@@ -29,6 +29,10 @@ class Graphic:
     """An entity's icon and color."""
     ch: int = ord("!")                              # Character
     fg: tuple[int, int, int] = (255, 255, 255)      # Color
+
+# @attrs.define(frozen=True)
+# class Box:
     
+
 Gold: Final = ("Gold", int)
 """Amount of gold."""

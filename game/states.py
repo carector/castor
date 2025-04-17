@@ -5,9 +5,10 @@ import attrs
 import tcod.event
 import tcod.console
 import tcod.sdl.audio
+import numpy as np
 from tcod.event import KeySym
 
-from game import g
+import game.g as g
 from game.components import Gold, Graphic, Position
 from game.constants import DIRECTION_KEYS, gameframe_left, gameframe_right, gameframe_top, gameframe_bottom, logframe_bottom, logframe_top, logframe_right, logframe_left
 from game.tags import IsItem, IsPlayer
@@ -61,7 +62,9 @@ class InGame(State):
     """Primary in-game state.\n
     States will always use g.world to access the ECS registry."""
     
-    #def __init__(self) -> None:
+    def __init__(self) -> None:
+        g.world = game.world_tools.new_world()
+        g.log = game.menus.LogMenu(x=21, y=48, w=58, h=8)
         # Play music
         # g.mixer = tcod.sdl.audio.BasicMixer(tcod.sdl.audio.open())
         # sound, sample_rate = soundfile.read("data/mus/mus_sadspiritiv.ogg")
@@ -76,17 +79,37 @@ class InGame(State):
         offset_x = player_pos.x - 49
         offset_y = player_pos.y - 20
         
+        
+        # Windows
         gameframe_decor = "╝═╚║ ║╗═╔"
         console.draw_frame(0, 0, 20, 40, fg=(128, 128, 128), decoration=gameframe_decor)    # Inventory frame
         console.draw_frame(80, 0, 20, 50, fg=(128, 128, 128), decoration=gameframe_decor)   # Right panel frame
-        console.draw_frame(20, 0, 60, 40, fg=(255, 200, 255), decoration=gameframe_decor)   # Game frame
+        console.draw_frame(20, 0, 60, 40, fg=(200, 200, 255), decoration=gameframe_decor)   # Game frame
         console.print(x=20, y=0, width=60, height=1, fg=(255, 255, 0), string="World of Wowzers", alignment=libtcodpy.CENTER)
         console.draw_frame(0, 40, 20, 10, fg=(128, 128, 128), decoration=gameframe_decor)   # World stats frame
         console.draw_frame(20, 40, 60, 10, fg=(128, 128, 128), decoration=gameframe_decor)  # Log frame
-        
-        
         g.log.on_draw(console=console)
         
+        # Player coords
+        console.print(x=1, y=48, text=f"({player_pos.x}, {player_pos.y})", fg=(255, 255, 0))
+        
+        # Terrain
+        scale = 0.03
+        grid = g.noise[tcod.noise.grid(
+            shape=(58, 38), 
+            scale=scale, 
+            indexing="ij", 
+            origin=(offset_x*scale, offset_y*scale))
+        ]
+        
+        it = np.nditer(grid, flags=['multi_index'])
+        for pos in it:
+            ch = ord("^")
+            if(pos < 0.3): continue
+            if(pos > 0.7): ch = ord("V")
+            console.rgb[["ch", "fg"]][it.multi_index[1] + 1, it.multi_index[0] + 21] = ch, (0, 128, 0)
+                
+            
         # We can draw entities if they have both a Position and a Graphic
         for entity in g.world.Q.all_of(components=[Position, Graphic]):
             pos = entity.components[Position]
@@ -94,10 +117,6 @@ class InGame(State):
 
             if not (gameframe_left <= pos.x-offset_x < gameframe_right and gameframe_top <= pos.y-offset_y < gameframe_bottom): continue   # Ignore offscreen
             console.rgb[["ch", "fg", "bg"]][pos.y-offset_y, pos.x-offset_x] = graphic.ch, graphic.fg, (0,0,0)
-        
-        # Print text component if it exists
-        if text := g.world[None].components.get(("Text", str)):
-            console.print(x=logframe_left, y=logframe_bottom-1, string=f"> {text}", fg=(255,255,255))
 
     # Handle events        
     def on_event(self, event: tcod.event.Event) -> StateResult:

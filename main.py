@@ -6,8 +6,9 @@ import tcod.tileset
 import tcod.event
 import tcod.console
 import tcod.context
+import tcod.noise
 
-from game import g
+import game.g as g
 import game.state_tools
 import game.states
 import game.world_tools
@@ -20,7 +21,17 @@ def main() -> None:
     
     tcod.tileset.procedural_block_elements(tileset=tileset)
     g.console = tcod.console.Console(100, 50)
-    g.states = [game.states.MainMenu()]
+    g.states = [game.states.InGame()]
+    g.noise = tcod.noise.Noise(
+        dimensions=2,
+        algorithm=tcod.noise.Algorithm.SIMPLEX,
+        implementation=tcod.noise.Implementation.FBM,
+        #lacunarity=
+        hurst=0.75,
+        octaves=8,
+        seed=67182141
+    )
+    
     # Game loop
     with tcod.context.new(tileset=tileset, console=g.console) as g.context:
         game.state_tools.main_loop()

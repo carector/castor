@@ -25,5 +25,8 @@ mixer: tcod.sdl.audio.BasicMixer
 
 log: game.menus.LogMenu
 
-#player: object
-#"""Singleton reference to player object"""
+noise: tcod.noise.Noise
+"""Sampler for generating terrain"""
+# Current idea:
+# - Use a constant seed game-wide
+# - Find interesting spots and place handcrafted encounters there
