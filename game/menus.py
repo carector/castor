@@ -18,7 +18,7 @@ class MenuItem(Protocol):
     def on_event(self, event: tcod.event.Event):
         """Handle events passed to the menu item"""
         
-    def on_draw(self, console: tcod.console.Console, x: int, y: int, w: int, highlight: bool) -> None:
+    def on_draw(self, console: tcod.console.Console, x: int, y: int, w: int, highlight: bool, fg: tuple = (255, 255, 255)) -> None:
         """Draw menu item at the given position"""
 
 @attrs.define()
@@ -30,9 +30,9 @@ class TextItem(MenuItem):
     def on_event(self, event: tcod.event.Event):
         pass
     
-    def on_draw(self, console: tcod.console.Console, x: int, y: int, w: int, highlight: bool) -> None:
+    def on_draw(self, console: tcod.console.Console, x: int, y: int, w: int, highlight: bool, fg: tuple = (255, 255, 255)) -> None:
         """ Render label of item"""
-        console.print(x, y, self.label, width=w, fg=(255, 255, 255), bg=(64, 64, 64) if highlight else (0, 0, 0))
+        console.print(x, y, self.label, width=w, fg=fg, bg=(64, 64, 64) if highlight else (0, 0, 0))
 
 
 @attrs.define()
@@ -52,7 +52,7 @@ class SelectItem(MenuItem):
             case _:
                 return None
             
-    def on_draw(self, console: tcod.console.Console, x: int, y: int, w: int, highlight: bool) -> None:
+    def on_draw(self, console: tcod.console.Console, x: int, y: int, w: int, highlight: bool, fg: tuple = (255, 255, 255)) -> None:
         """Render label of item"""
         console.print(x, y, self.label, width=w, fg=(255, 255, 255), bg=(64, 64, 64) if highlight else (0, 0, 0))
 
@@ -74,7 +74,10 @@ class LogMenu():
     
     def on_draw(self, console: tcod.console.Console) -> None:
         for i in range(min(self.h, len(self.items))):
-            self.items[i].on_draw(console=console, x=self.x, y=self.y-i, w=self.w, highlight=False)    
+            col = (255, 255, 255)
+            if i == 0: col = (255, 255, 0)
+            else: col = (255//i, 255//i, 255//i)
+            self.items[i].on_draw(console=console, x=self.x, y=self.y-i, fg=col, w=self.w, highlight=False)    
 
 @attrs.define()
 class ListMenu(State):
