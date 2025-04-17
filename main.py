@@ -34,6 +34,8 @@ def main() -> None:
     
     # Game loop
     with tcod.context.new(tileset=tileset, console=g.console) as g.context:
+        window = g.context.sdl_window
+        window.fullscreen = tcod.sdl.video.WindowFlags.FULLSCREEN_DESKTOP
         game.state_tools.main_loop()
     
             
