@@ -15,6 +15,9 @@ from game.state import State, StateResult, Pop, Push, Reset
 import game.menus
 import game.world_tools
 from tcod import libtcodpy
+from random import Random
+
+from game.utils import clamp
 
 @attrs.define()
 class MainMenu(game.menus.ListMenu):
@@ -61,14 +64,23 @@ class InGame(State):
     """Primary in-game state.\n
     States will always use g.world to access the ECS registry."""
     
+    zones: list = []
+    area_name: str = ""
+    count: int = 0
+    
     def __init__(self) -> None:
+        self.count = 0
         g.world = game.world_tools.new_world()
         g.log = game.menus.LogMenu(x=21, y=48, w=58, h=8)
+        self.update_area_name("World of Wowzers")
         # Play music
         # g.mixer = tcod.sdl.audio.BasicMixer(tcod.sdl.audio.open())
         # sound, sample_rate = soundfile.read("data/mus/mus_sadspiritiv.ogg")
         # sound = g.mixer.device.convert(sound, sample_rate)
         # channel = g.mixer.play(sound, volume=0.25)
+    
+    def update_area_name(self, name: str) -> None:
+        self.area_name = name
     
     # Handle event draw
     def on_draw(self, console: tcod.console.Console) -> None:
@@ -78,25 +90,49 @@ class InGame(State):
         offset_x = player_pos.x - 49
         offset_y = player_pos.y - 20
         
+        # Draw overworld
+        #self.overworld_draw(player_pos, console)
         
-        # Windows
-        gameframe_decor = "╝═╚║ ║╗═╔"
-        console.draw_frame(0, 0, 20, 40, fg=(128, 128, 128), decoration=gameframe_decor)    # Dialog frame
-        console.draw_frame(80, 0, 20, 50, fg=(128, 128, 128), decoration=gameframe_decor)   # Inventory frame
-        console.draw_frame(20, 0, 60, 40, fg=(200, 200, 200), decoration=gameframe_decor)   # Game frame
-        console.print(x=20, y=0, width=60, height=1, fg=(255, 255, 0), string="╣ World of Wowzers ╠", alignment=libtcodpy.CENTER)
-        console.draw_frame(0, 40, 20, 10, fg=(128, 128, 128), decoration=gameframe_decor)   # World stats frame
-        console.draw_frame(20, 40, 60, 10, fg=(128, 128, 128), decoration=gameframe_decor)  # Log frame
-        g.log.on_draw(console=console)
-        
-        # Current actor info
-        if g.current_actor is not None:
-            console.print(x=0, y=0, width=20, height=1, fg=(255, 255, 0), string=f"╣ {g.current_actor.name} ╠", alignment=libtcodpy.CENTER)
-            console.print(x=2, y=2, width=16, height=36, fg=(255, 255, 255), string=g.current_actor.text)
-            #for i in range(g.current_actor.choices):
+        # BSP dungeon test
+        rand = Random()
+        count = 0
+        for n in g.dungeon.bsp.post_order():            
+            if not n.children:
+                console.draw_frame(x=n.x-offset_x, y=n.y-offset_y, width=n.width, height=n.height, clear=False, fg=(255, 255, 255))
+            else:
+                node1, node2 = n.children
+                x1, y1 = node1.x, node1.y
+                x2, y2 = node2.x, node2.y
                 
-        # Player coords
-        console.print(x=0, y=47, width=20, alignment=libtcodpy.CENTER, text=f"({player_pos.x}, {player_pos.y})", fg=(255, 255, 0))
+                if not n.horizontal:
+                    x1 = clamp(n.position, x1, x2+node1.width-1)
+                    x2 = clamp(n.position, x2, x2+node2.width-1)
+                    y1 = (node1.y + node2.y + node2.height - 1)//2
+                    y2 = y1
+                else:
+                    y1 = clamp(n.position, node1.y, node1.y+node1.height-1)
+                    y2 = clamp(n.position, node2.y, node2.y+node2.height-1)
+                    x1 = (node1.x + node2.x + node2.width - 1)//2
+                    x2 = x1
+
+                color = (rand.randint(0, 255), rand.randint(0, 255), rand.randint(0, 255))
+                console.draw_frame(x1-offset_x, y1-offset_y, x2-x1+1, y2-y1+1)
+                console.print(x1-offset_x, y1-offset_y, "1", fg=color)
+                console.print(x2-offset_x, y2-offset_y, "2", fg=color)
+
+        # Entities
+        for entity in g.world.Q.all_of(components=[Position, Graphic]):
+            pos = entity.components[Position]
+            graphic = entity.components[Graphic]
+
+            if not (gameframe_left <= pos.x-offset_x < gameframe_right and gameframe_top <= pos.y-offset_y < gameframe_bottom): continue   # Ignore offscreen
+            console.rgb[["ch", "fg", "bg"]][pos.y-offset_y, pos.x-offset_x] = graphic.ch, graphic.fg, (0,0,0)
+        
+        #self.gui_draw(player_pos, console)
+        
+    def overworld_draw(self, player_pos: Position, console: tcod.console.Console) -> None:
+        offset_x = player_pos.x - 49
+        offset_y = player_pos.y - 20
         
         # Terrain
         scale = 0.025
@@ -139,14 +175,26 @@ class InGame(State):
                     case 2: col = (0, 255, 0)
                     case 4: col = (128, 0, 128)
                 console.rgb[["ch", "fg"]][ty+level.y-offset_y, tx+level.x-offset_x] = t, col
-        
-        # Entities
-        for entity in g.world.Q.all_of(components=[Position, Graphic]):
-            pos = entity.components[Position]
-            graphic = entity.components[Graphic]
 
-            if not (gameframe_left <= pos.x-offset_x < gameframe_right and gameframe_top <= pos.y-offset_y < gameframe_bottom): continue   # Ignore offscreen
-            console.rgb[["ch", "fg", "bg"]][pos.y-offset_y, pos.x-offset_x] = graphic.ch, graphic.fg, (0,0,0)
+    def gui_draw(self, player_pos: Position, console: tcod.console.Console) -> None:
+        # Windows
+        gameframe_decor = "╝═╚║ ║╗═╔"
+        console.draw_frame(0, 0, 20, 40, fg=(128, 128, 128), decoration=gameframe_decor)    # Dialog frame
+        console.draw_frame(80, 0, 20, 50, fg=(128, 128, 128), decoration=gameframe_decor)   # Inventory frame
+        console.draw_frame(20, 0, 60, 40, fg=(200, 200, 200), decoration=gameframe_decor, clear=False)   # Game frame
+        console.print(x=20, y=0, width=60, height=1, fg=(255, 255, 0), string=f"╣ {self.area_name} ╠", alignment=libtcodpy.CENTER)
+        console.draw_frame(0, 40, 20, 10, fg=(128, 128, 128), decoration=gameframe_decor)   # World stats frame
+        console.draw_frame(20, 40, 60, 10, fg=(128, 128, 128), decoration=gameframe_decor)  # Log frame
+        g.log.on_draw(console=console)
+        
+        # Current actor info
+        if g.current_actor is not None:
+            console.print(x=0, y=0, width=20, height=1, fg=(255, 255, 0), string=f"╣ {g.current_actor.name} ╠", alignment=libtcodpy.CENTER)
+            console.print(x=2, y=2, width=16, height=36, fg=(255, 255, 255), string=g.current_actor.text)
+            #for i in range(g.current_actor.choices):
+                
+        # Player coords
+        console.print(x=0, y=47, width=20, alignment=libtcodpy.CENTER, text=f"({player_pos.x}, {player_pos.y})", fg=(255, 255, 0))
 
     # Handle events        
     def on_event(self, event: tcod.event.Event) -> StateResult:
@@ -163,12 +211,13 @@ class InGame(State):
                 g.current_actor = None
 
                 # Check for terrain collision
-                val = g.grid[28 + DIRECTION_KEYS[sym][0], 19 + DIRECTION_KEYS[sym][1]]
-                if val > NOISE_COLLISION_THRESH: return None
+                #val = g.grid[28 + DIRECTION_KEYS[sym][0], 19 + DIRECTION_KEYS[sym][1]]
+                #if val > NOISE_COLLISION_THRESH: return None
                 
                 # Check for level collision
                 for level in g.world.Q.all_of(components=[LevelContainer]):
                     if not level.components[LevelContainer].within_bounds(player_pos.x, player_pos.y): continue
+                    self.update_area_name(level.components[LevelContainer].id)
                     if level.components[LevelContainer].is_space_occupied(player_pos.x + DIRECTION_KEYS[sym][0], player_pos.y+DIRECTION_KEYS[sym][1]): return
                 
                 player.components[Position] += DIRECTION_KEYS[sym]

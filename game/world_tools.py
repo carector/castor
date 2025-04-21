@@ -2,8 +2,9 @@
 from __future__ import annotations
 from random import Random
 from tcod.ecs import Registry
-from game.components import Gold, Graphic, Position, Actor, LevelContainer
+from game.components import Gold, Graphic, Position, Actor, LevelContainer, Dungeon
 from game.tags import IsActor, IsItem, IsPlayer
+from game import g
 
 import tcod.noise
 import tcod.bsp
@@ -23,17 +24,8 @@ def new_world() -> Registry:
     # Noise test
     
     
-    # BSP test
-    #bsp = tcod.bsp.BSP(x=0, y=0, width=100, height=50)
-    #bsp.split_recursive(depth=5, min_width=3, min_height=3, max_horizontal_ratio=1.5, max_vertical_ratio=1.5)    
-    # for node in bsp.pre_order():
-    #     if node.children:
-    #         node1, node2 = node.children
-    #         print("Connect rooms")
-    #         break
-    #     else:
-    #         print("Dig for a room")
-    
+    # Dungeon test
+    g.dungeon = Dungeon(-25, -13, 50, 50)
     
     # Import LDtk levels
     for _, _, files in os.walk("data/ldtk/data", topdown=False):
@@ -83,11 +75,11 @@ def new_world() -> Registry:
     actor.tags |= {IsActor}
     
     # Random gold placement
-    for _ in range(10):
-        g = world[object()]
-        g.components[Position] = Position(rng.randint(0, 20), rng.randint(0, 20))
-        g.components[Graphic] = Graphic(ord("$"), fg=(255, 255, 0))
-        g.components[Gold] = rng.randint(1, 10)
-        g.tags |= {IsItem}
+    # for _ in range(10):
+    #     g = world[object()]
+    #     g.components[Position] = Position(rng.randint(0, 20), rng.randint(0, 20))
+    #     g.components[Graphic] = Graphic(ord("$"), fg=(255, 255, 0))
+    #     g.components[Gold] = rng.randint(1, 10)
+    #     g.tags |= {IsItem}
     
     return world

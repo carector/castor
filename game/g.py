@@ -36,6 +36,8 @@ grid: np.ndarray
 current_actor: game.components.Actor = None
 """Current actor the player is interacting with."""
 
+dungeon: game.components.Dungeon
+
 # Current idea:
 # - Use a constant seed game-wide
 # - Find interesting spots and place handcrafted encounters there

@@ -27,15 +27,15 @@ def main() -> None:
         algorithm=tcod.noise.Algorithm.SIMPLEX,
         implementation=tcod.noise.Implementation.FBM,
         #lacunarity=
-        hurst=1,
-        octaves=8,
+        hurst=0.5,
+        octaves=4,
         seed=10491049
     )
     
     # Game loop
     with tcod.context.new(tileset=tileset, console=g.console) as g.context:
-        window = g.context.sdl_window
-        window.fullscreen = tcod.sdl.video.WindowFlags.FULLSCREEN_DESKTOP
+        #window = g.context.sdl_window
+        #window.fullscreen = tcod.sdl.video.WindowFlags.FULLSCREEN_DESKTOP
         game.state_tools.main_loop()
     
             
