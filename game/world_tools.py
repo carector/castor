@@ -25,7 +25,7 @@ def new_world() -> Registry:
     
     
     # Dungeon test
-    g.dungeon = Dungeon(-25, -13, 50, 50)
+    g.dungeon = Dungeon(-25, -13, 50, 50, max_depth=3)
     
     # Import LDtk levels
     for _, _, files in os.walk("data/ldtk/data", topdown=False):
@@ -33,29 +33,6 @@ def new_world() -> Registry:
             level_data = json.loads(open(f"data/ldtk/data/{name}", 'r').read())
             level = world[object()]
             level.components[LevelContainer] = LevelContainer(level_data)
-    
-    # layer = level["layerInstances"][1]
-    # width = layer["__cWid"]
-    # height = layer["__cHei"]
-    # intgrid = layer["intGridCsv"]
-    # tileIndex = 0
-    # for y in range(height):
-    #     for x in range(width):
-    #         val = intgrid[tileIndex]
-    #         if not val == 0:
-    #             color = (255, 255, 255)
-    #             match val:
-    #                 case 2: color = (0, 255, 0)
-    #                 case 3: color = (311, 3, 50)
-    #                 case 5: color = (0, 0, 255)
-    #             tile = world[object()]
-    #             tile.components[Position] = Position(x, y)
-    #             tile.components[Graphic] = Graphic(ord("+"), fg=color)                    
-    #         tileIndex += 1
-    
-    
-    
-    
     
     # Define player
     player = world[object()]

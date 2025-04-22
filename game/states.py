@@ -73,6 +73,7 @@ class InGame(State):
         g.world = game.world_tools.new_world()
         g.log = game.menus.LogMenu(x=21, y=48, w=58, h=8)
         self.update_area_name("World of Wowzers")
+        print(g.dungeon.bsp.__repr__())
         # Play music
         # g.mixer = tcod.sdl.audio.BasicMixer(tcod.sdl.audio.open())
         # sound, sample_rate = soundfile.read("data/mus/mus_sadspiritiv.ogg")
@@ -101,24 +102,44 @@ class InGame(State):
                 console.draw_frame(x=n.x-offset_x, y=n.y-offset_y, width=n.width, height=n.height, clear=False, fg=(255, 255, 255))
             else:
                 node1, node2 = n.children
+                color = (rand.randint(0, 255), rand.randint(0, 255), rand.randint(0, 255))
+                
+                if(node1.children): node1 = g.dungeon.get_nearest_room(n.children[0], True)
+                if(node2.children): node2 = g.dungeon.get_nearest_room(n.children[1], False)
+                
                 x1, y1 = node1.x, node1.y
                 x2, y2 = node2.x, node2.y
+                frame_color = (255, 255, 255)
+                
+                # x1 = clamp(n.position, x1+1, x1+node1.width-2)
+                # x2 = clamp(n.position, x2+1, x2+node2.width-2)
+                # y1 = clamp(n.position, y1+1, y1+node1.height-2)
+                # y2 = clamp(n.position, y2+1, y2+node2.height-2)
+                
+                # x1, y1 = g.dungeon.get_closest_coords(node2, node1)
+                # x2, y2 = g.dungeon.get_closest_coords(node1, node2)
+                
                 
                 if not n.horizontal:
-                    x1 = clamp(n.position, x1, x2+node1.width-1)
-                    x2 = clamp(n.position, x2, x2+node2.width-1)
-                    y1 = (node1.y + node2.y + node2.height - 1)//2
+                    x1 = clamp(n.position, x1+1, x1+node1.width-2)
+                    x2 = clamp(n.position, x2+1, x2+node2.width-2)
+                    y1 = (y1 + y2 + node2.height - 1)//2
                     y2 = y1
                 else:
-                    y1 = clamp(n.position, node1.y, node1.y+node1.height-1)
-                    y2 = clamp(n.position, node2.y, node2.y+node2.height-1)
-                    x1 = (node1.x + node2.x + node2.width - 1)//2
+                    y1 = clamp(n.position, y1+1, y1+node1.height-2)
+                    y2 = clamp(n.position, y2+1, y2+node2.height-2)
+                    x1 = (x1 + x2 + node2.width - 1)//2
                     x2 = x1
 
-                color = (rand.randint(0, 255), rand.randint(0, 255), rand.randint(0, 255))
-                console.draw_frame(x1-offset_x, y1-offset_y, x2-x1+1, y2-y1+1)
+                w = x2 - x1+1
+                h = y2 - y1+1
+     
+                console.draw_frame(x1-offset_x, y1-offset_y, w, h, fg=frame_color)
                 console.print(x1-offset_x, y1-offset_y, "1", fg=color)
-                console.print(x2-offset_x, y2-offset_y, "2", fg=color)
+                console.print(x2-offset_x, y2-offset_y, "2", fg=color)    
+                count += 1
+                
+        console.print(1, 1, f"Connections: {count}")
 
         # Entities
         for entity in g.world.Q.all_of(components=[Position, Graphic]):

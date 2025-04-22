@@ -58,33 +58,29 @@ class Dungeon:
     """Stores all data related to a dungeon."""
     x: int
     y: int
+    max_depth: int
     width: int
     height: int
     seed: int = 12345
-    
-    # Private fields
-    rooms: dict[tcod.bsp.BSP, DungeonRoom] = attrs.field(init=False)
-    corridors: list[DungeonCorridor] = attrs.field(init=False)
-    
-    
+
     #connections: 
     rng: Random = attrs.field(init=False)
     bsp: tcod.bsp.BSP = attrs.field(init=False)
     
-    def __init__(self, x: int, y: int, width: int, height: int, seed: int = 12345):
+    def __init__(self, x: int, y: int, width: int, height: int, seed: int = 12345, max_depth: int = 3):
         super().__init__()
         
-        self.rooms = {}
-        self.corridors = []
         self.rng = Random(seed)
         self.bsp = tcod.bsp.BSP(x=x, y=y, width=width, height=height)
         
         MIN_WIDTH = 4
         MIN_HEIGHT = 4
         
+        self.max_depth = max_depth
+        
         # Generate rooms
         self.bsp.split_recursive(
-            depth=3, 
+            depth=self.max_depth, 
             min_width=MIN_WIDTH+3, 
             min_height=MIN_HEIGHT+3, 
             max_horizontal_ratio=1.5, 
@@ -95,7 +91,7 @@ class Dungeon:
             # Generate rooms and add corridors between rooms
             if not node.children:
                 # Randomize node values a bit
-                old_width = node.width
+                #old_width = node.width
                 old_height = node.height
                 node.width = self.rng.randint(max(MIN_WIDTH, node.width//2), node.width)
                 node.height = self.rng.randint(max(MIN_HEIGHT, node.height//2), node.height)
@@ -106,29 +102,27 @@ class Dungeon:
     
     def get_closest_coords(self, node: tcod.bsp.BSP, other: tcod.bsp.BSP):
         """Returns coords within `other`'s bounds that are the closest to `node`'s."""
-        x = node.x if not node.horizontal else node.position
-        y = node.y if node.horizontal else node.position
-        return (clamp(x, other.x, other.x+other.width-1), clamp(y, other.y, other.y+other.height-1))
+        x = node.x
+        y = node.y
+        return (clamp(x, other.x+1, other.x+other.width-2), clamp(y, other.y+1, other.y+other.height-2))
     
-    def get_nearest_room(self, node: tcod.bsp.BSP) -> tcod.bsp.BSP:
+    def get_nearest_room(self, node: tcod.bsp.BSP, use_max: bool) -> tcod.bsp.BSP:
         if not self.bsp.contains(node.x, node.y): return None
-        for comp in self.bsp.pre_order():
-            if not comp.children:
-                return comp
-        return None
-        
-        # for node in corridor_nodes:
-        #     node1, node2 = node.children
-            
-        #     room1 = None
-        #     room2 = None
-                
-        #     x1, y1, x2, y2 = room1.x, room1.y, room2.x, room2.y
-        #     if not node.horizontal:
-        #         x1 += room1.width-1
-        #     else: 
-        #         y1 += room1.height-1
-        #     self.corridors.append(DungeonCorridor(x1, y1, x2, y2, color=(self.rng.randint(0, 255), self.rng.randint(0, 255), self.rng.randint(0, 255))))
+        cur = node
+        x = node.x
+        y = node.y
+        w = node.width
+        h = node.height
+        nx = node.x+1 + (node.width-2 if use_max else 0)
+        ny = node.y+1 + (node.height-2 if use_max else 0)
+
+        while cur.children:
+            node1, node2 = cur.children
+            if cur.horizontal:
+                cur = node2 if ny >= cur.position else node1
+            else:
+                cur = node2 if nx >= cur.position else node1
+        return cur
 
 @attrs.define(frozen=False)
 class LevelContainer:
