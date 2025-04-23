@@ -25,7 +25,7 @@ def new_world() -> Registry:
     
     
     # Dungeon test
-    g.dungeon = Dungeon(-25, -13, 50, 50, max_depth=3)
+    g.dungeon = Dungeon(-25, -13, 75, 75, max_depth=4)
     
     # Import LDtk levels
     for _, _, files in os.walk("data/ldtk/data", topdown=False):

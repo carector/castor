@@ -97,9 +97,12 @@ class InGame(State):
         # BSP dungeon test
         rand = Random()
         count = 0
+        dungeon = g.dungeon.bsp
+        console.draw_frame(x=dungeon.x-offset_x, y=dungeon.y-offset_y, width=dungeon.width, height=dungeon.height, clear=True, decoration="XXXXXXXXX")
+        
         for n in g.dungeon.bsp.post_order():            
             if not n.children:
-                console.draw_frame(x=n.x-offset_x, y=n.y-offset_y, width=n.width, height=n.height, clear=False, fg=(255, 255, 255))
+                console.draw_frame(x=n.x-offset_x, y=n.y-offset_y, width=n.width, height=n.height, clear=True, decoration="         ", fg=(255, 255, 255))
             else:
                 node1, node2 = n.children
                 color = (rand.randint(0, 255), rand.randint(0, 255), rand.randint(0, 255))
@@ -131,10 +134,10 @@ class InGame(State):
                     x1 = (x1 + x2 + node2.width - 1)//2
                     x2 = x1
 
-                w = x2 - x1+1
-                h = y2 - y1+1
+                w = max(3, x2 - x1+1)
+                h = max(3, y2 - y1+1)
      
-                console.draw_frame(x1-offset_x, y1-offset_y, w, h, fg=frame_color)
+                console.draw_frame(x1-offset_x, y1-offset_y, w, h, fg=frame_color, decoration="         ")
                 console.print(x1-offset_x, y1-offset_y, "1", fg=color)
                 console.print(x2-offset_x, y2-offset_y, "2", fg=color)    
                 count += 1
