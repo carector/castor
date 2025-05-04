@@ -87,7 +87,7 @@ class Dungeon:
             max_vertical_ratio=1.5
         )
         
-        for node in self.bsp.pre_order():
+        for node in self.bsp.inverted_level_order():
             # Generate rooms and add corridors between rooms
             if not node.children:
                 # Randomize node values a bit
@@ -98,31 +98,54 @@ class Dungeon:
                 # node.x += self.rng.randint(-(old_width - node.width), old_width - node.width)
                 # node.y += self.rng.randint(-(old_height - node.height), old_height - node.height)//2
     
+    def traverse(self, console):
+        for node in self.bsp.inverted_level_order():
+            self.traverse_node(console=console, node=node)
+            
+    def traverse_node(self, console, node: tcod.bsp.BSP):
+        # TODO: https://www.roguebasin.com/index.php?title=Complete_Roguelike_Tutorial,_using_Python%2Blibtcod,_extras#BSP_Dungeon_Generator
+        
+        # Room
+        if not node.children:
+            minx = node.x + 1
+            maxx = node.x + node.width - 1
+            miny = node.y + 1
+            maxy = node.y + node.height - 1
+            
+            node.x = minx
+            node.y = miny
+            node.width = maxx-minx + 1
+            node.height = maxy-miny + 1
+            
+            # Dig
+            #for x in range(minx, maxx):
+                
+            
+        
     
+    # def get_closest_coords(self, node: tcod.bsp.BSP, other: tcod.bsp.BSP):
+    #     """Returns coords within `other`'s bounds that are the closest to `node`'s."""
+    #     x = node.x
+    #     y = node.y
+    #     return (clamp(x, other.x+1, other.x+other.width-2), clamp(y, other.y+1, other.y+other.height-2))
     
-    def get_closest_coords(self, node: tcod.bsp.BSP, other: tcod.bsp.BSP):
-        """Returns coords within `other`'s bounds that are the closest to `node`'s."""
-        x = node.x
-        y = node.y
-        return (clamp(x, other.x+1, other.x+other.width-2), clamp(y, other.y+1, other.y+other.height-2))
-    
-    def get_nearest_room(self, node: tcod.bsp.BSP, use_max: bool) -> tcod.bsp.BSP:
-        if not self.bsp.contains(node.x, node.y): return None
-        cur = node
-        x = node.x
-        y = node.y
-        w = node.width
-        h = node.height
-        nx = node.x+1 + (node.width-2 if use_max else 0)
-        ny = node.y+1 + (node.height-2 if use_max else 0)
+    # def get_nearest_room(self, node: tcod.bsp.BSP, use_max: bool) -> tcod.bsp.BSP:
+    #     if not self.bsp.contains(node.x, node.y): return None
+    #     cur = node
+    #     x = node.x
+    #     y = node.y
+    #     w = node.width
+    #     h = node.height
+    #     nx = node.x+1 + (node.width-2 if use_max else 0)
+    #     ny = node.y+1 + (node.height-2 if use_max else 0)
 
-        while cur.children:
-            node1, node2 = cur.children
-            if cur.horizontal:
-                cur = node2 if ny >= cur.position else node1
-            else:
-                cur = node2 if nx >= cur.position else node1
-        return cur
+    #     while cur.children:
+    #         node1, node2 = cur.children
+    #         if cur.horizontal:
+    #             cur = node2 if ny >= cur.position else node1
+    #         else:
+    #             cur = node2 if nx >= cur.position else node1
+    #     return cur
 
 @attrs.define(frozen=False)
 class LevelContainer:
