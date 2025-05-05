@@ -8,6 +8,7 @@ import game.g as g
 import numpy as np
 from random import Random
 import math
+import libtcodpy
 
 def clamp(value, min_value, max_value):
         return max(min(value, max_value), min_value)
@@ -56,69 +57,167 @@ class Actor:
 @attrs.define(frozen=False)
 class Dungeon:
     """Stores all data related to a dungeon."""
-    x: int
-    y: int
-    max_depth: int
-    width: int
-    height: int
+    x: int = 0
+    y: int = 0
+    max_depth: int = 3
+    width: int = 100
+    height: int = 100
     seed: int = 12345
 
-    #connections: 
+    rooms: list[tuple] = attrs.field(init=False)
+    map: np.ndarray = attrs.field(init=False)
     rng: Random = attrs.field(init=False)
-    bsp: tcod.bsp.BSP = attrs.field(init=False)
+    bsp: tcod.bsp.BSP = attrs.field(init=False)    
     
     def __init__(self, x: int, y: int, width: int, height: int, seed: int = 12345, max_depth: int = 3):
         super().__init__()
         
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.seed = seed
         self.rng = Random(seed)
         self.bsp = tcod.bsp.BSP(x=x, y=y, width=width, height=height)
+        self.map = np.ones(shape=(width, height))
+        self.rooms = []
         
-        MIN_WIDTH = 4
-        MIN_HEIGHT = 4
+        MIN_WIDTH = 5
+        MIN_HEIGHT = 5
         
         self.max_depth = max_depth
         
-        # Generate rooms
+        # Generate BSP
         self.bsp.split_recursive(
             depth=self.max_depth, 
-            min_width=MIN_WIDTH+3, 
-            min_height=MIN_HEIGHT+3, 
+            min_width=MIN_WIDTH+1, 
+            min_height=MIN_HEIGHT+1,
             max_horizontal_ratio=1.5, 
             max_vertical_ratio=1.5
         )
         
+        # Generate rooms and corridors
         for node in self.bsp.inverted_level_order():
-            # Generate rooms and add corridors between rooms
+            # Room
             if not node.children:
-                # Randomize node values a bit
-                #old_width = node.width
-                old_height = node.height
-                node.width = self.rng.randint(max(MIN_WIDTH, node.width//2), node.width)
-                node.height = self.rng.randint(max(MIN_HEIGHT, node.height//2), node.height)
-                # node.x += self.rng.randint(-(old_width - node.width), old_width - node.width)
-                # node.y += self.rng.randint(-(old_height - node.height), old_height - node.height)//2
-    
-    def traverse(self, console):
-        for node in self.bsp.inverted_level_order():
-            self.traverse_node(console=console, node=node)
+                minx = node.x + 1
+                maxx = node.x + node.width - 1
+                miny = node.y + 1
+                maxy = node.y + node.height - 1
+                
+                # Randomize room size
+                if True:
+                    minx = self.rng.randint(minx, maxx - MIN_WIDTH + 1)
+                    miny = self.rng.randint(miny, maxy - MIN_HEIGHT + 1)
+                    maxx = self.rng.randint(minx + MIN_WIDTH - 2, maxx)
+                    maxy = self.rng.randint(miny + MIN_HEIGHT - 2, maxy)
+                
+                
+                node.x = minx
+                node.y = miny
+                node.width = maxx-minx + 1
+                node.height = maxy-miny + 1
+                
+                # Dig out room
+                for x in range(minx, maxx + 1):
+                    for y in range(miny, maxy + 1):
+                        self.map[x, y] = 0      # 1 = blocked, 0 = unblocked
+                                                # TODO: Add attributes for `blocked`, `blocked_sight`, and `visited`
+                                                
+                self.rooms.append(((minx + maxx) / 2, (miny + maxy) / 2))
+                
+            # Corridor
+            else:
+                left, right = node.children
+                node.x = min(left.x, right.x)
+                node.y = min(left.y, right.y)
+                node.width = max(left.x+left.width, right.x+right.width) - node.x
+                node.height = max(left.y+left.height, right.y+right.height) - node.y
+                
+                if node.horizontal:
+                    if left.x + left.width - 1 < right.x or right.x + right.width - 1 < left.x:
+                        x1 = self.rng.randint(left.x, left.x + left.width - 1)
+                        x2 = self.rng.randint(right.x, right.x + right.width - 1)
+                        y = self.rng.randint(left.y + left.height, right.y)
+                        self.vline_up(x1, y-1)
+                        self.hline(x1, y, x2)
+                        self.vline_down(x2, y+1)
+                        
+                    else:
+                        minx = max(left.x, right.x)
+                        maxx = min(left.x + left.width - 1, right.x + right.width - 1)
+                        x = self.rng.randint(minx, maxx)
+                        
+                        while x > self.width - 1:
+                            x -= 1
+                        
+                        self.vline_down(x, right.y)
+                        self.vline_up(x, right.y - 1)
+                
+                else:
+                    if left.y + left.height - 1 < right.y or right.y + right.height - 1 < left.y:
+                        y1 = self.rng.randint(left.y, left.y + left.height - 1)
+                        y2 = self.rng.randint(right.y, right.y + right.height - 1)
+                        x = self.rng.randint(left.x + left.width, right.x)
+                        self.hline_left(x-1, y1)
+                        self.vline(x, y1, y2)
+                        self.hline_right(x+1, y2)
+                        
+                    else:
+                        miny = max(left.y, right.y)
+                        maxy = min(left.y + left.height - 1, right.y + right.height - 1)
+                        y = self.rng.randint(miny, maxy)
+                        
+                        while y > self.height - 1:
+                            y -= 1
+                        
+                        self.hline_left(right.x-1, y)
+                        self.hline_right(right.x, y)
+                        
+        # Remove any 1-char width walls
+        for ry in range(self.height-2):
+            for rx in range(self.width-2):
+                if self.map[rx, ry] != 1: continue
+                if self.map[rx-1, ry] == 0 or self.map[rx+1, ry] == 0:
+                    self.map[rx, ry] == 0
             
-    def traverse_node(self, console, node: tcod.bsp.BSP):
-        # TODO: https://www.roguebasin.com/index.php?title=Complete_Roguelike_Tutorial,_using_Python%2Blibtcod,_extras#BSP_Dungeon_Generator
+    # https://www.roguebasin.com/index.php?title=Complete_Roguelike_Tutorial,_using_Python%2Blibtcod,_extras#BSP_Dungeon_Generator
         
-        # Room
-        if not node.children:
-            minx = node.x + 1
-            maxx = node.x + node.width - 1
-            miny = node.y + 1
-            maxy = node.y + node.height - 1
+    # TODO - move to dedicated dungeon file later
+    def vline(self, x, y1, y2):
+        if y1 > y2:
+            y1,y2 = y2,y1
+
+        for y in range(y1,y2+1):
+            self.map[x, y] = 0
+        
+    def vline_up(self, x, y):
+        while y >= 0 and self.map[x, y] == 1:
+            self.map[x, y] = 0
+            y -= 1
             
-            node.x = minx
-            node.y = miny
-            node.width = maxx-minx + 1
-            node.height = maxy-miny + 1
+    def vline_down(self, x, y):
+        while y < self.height and self.map[x, y] == 1:
+            self.map[x, y] = 0
+            y += 1
             
-            # Dig
-            #for x in range(minx, maxx):
+    def hline(self, x1, y, x2):
+        if x1 > x2:
+            x1,x2 = x2,x1
+        for x in range(x1,x2+1):
+            self.map[x, y] = 0
+            
+    def hline_left(self, x, y):
+        while x >= 0 and self.map[x, y] == 1:
+            self.map[x, y] = 0
+            x -= 1
+            
+    def hline_right(self, x, y):
+        while x < self.width and self.map[x, y] == 1:
+            self.map[x, y] = 0
+            x += 1
+            
+            
                 
             
         

@@ -94,8 +94,7 @@ class InGame(State):
         # Draw overworld
         #self.overworld_draw(player_pos, console)
         
-        #self.dungeon_draw(offset_x=offset_x, offset_y=offset_y, console=console)
-        g.dungeon.traverse(console)
+        self.dungeon_draw(offset_x=offset_x, offset_y=offset_y, console=console)
         
         # Entities
         for entity in g.world.Q.all_of(components=[Position, Graphic]):
@@ -107,57 +106,34 @@ class InGame(State):
         
         #self.gui_draw(player_pos, console)
     
-    def dungeon_draw(self, offset_x, offset_y, console) -> None:
+    def dungeon_draw(self, offset_x, offset_y, console: tcod.console.Console) -> None:
         # BSP dungeon test
         rand = Random()
         count = 0
-        dungeon = g.dungeon.bsp
-        #console.draw_frame(x=dungeon.x-offset_x, y=dungeon.y-offset_y, width=dungeon.width, height=dungeon.height, clear=True, decoration="XXXXXXXXX")
+        dungeon = g.dungeon
         
-        for n in g.dungeon.bsp.post_order():            
-            if not n.children:
-                console.draw_frame(x=n.x-offset_x, y=n.y-offset_y, width=n.width, height=n.height, clear=True, fg=(255, 255, 255))
-            else:
-                node1, node2 = n.children
-                # color = (rand.randint(0, 255), rand.randint(0, 255), rand.randint(0, 255))
+        for x in range(dungeon.width):
+            for y in range(dungeon.height):    
+                dx = x-offset_x
+                dy = y-offset_y
+                if dx >= console.width or dy >= console.height or dx < 0 or dy < 0: continue
+                col = (0, 255, 0)
+                ch = ord("#")
+                match dungeon.map[x, y]:
+                    case 0:
+                        col = (128, 128, 128)
+                        ch = ord(".")
+                    case 2:
+                        col = (255, 0, 0)
+                        ch = ord("^")
+                        
+                #console.put_char(dx, dy, ch)
+                console.rgb[["ch", "fg"]][dy, dx] = ch, col
+                    
+        # for node in dungeon.bsp.inverted_level_order():
+        #     if not node.children:
+        #         console.draw_frame(node.x-dungeon.bsp.x, node.y-dungeon.bsp.y, node.width, node.height, clear=False)
                 
-                # if(node1.children): node1 = g.dungeon.get_nearest_room(n.children[0], True)
-                # if(node2.children): node2 = g.dungeon.get_nearest_room(n.children[1], False)
-                
-                # x1, y1 = node1.x, node1.y
-                # x2, y2 = node2.x, node2.y
-                # frame_color = (255, 255, 255)
-                
-                # # x1 = clamp(n.position, x1+1, x1+node1.width-2)
-                # # x2 = clamp(n.position, x2+1, x2+node2.width-2)
-                # # y1 = clamp(n.position, y1+1, y1+node1.height-2)
-                # # y2 = clamp(n.position, y2+1, y2+node2.height-2)
-                
-                # # x1, y1 = g.dungeon.get_closest_coords(node2, node1)
-                # # x2, y2 = g.dungeon.get_closest_coords(node1, node2)
-                
-                
-                # if not n.horizontal:
-                #     x1 = clamp(n.position, x1+1, x1+node1.width-2)
-                #     x2 = clamp(n.position, x2+1, x2+node2.width-2)
-                #     y1 = (y1 + y2 + node2.height - 1)//2
-                #     y2 = y1
-                # else:
-                #     y1 = clamp(n.position, y1+1, y1+node1.height-2)
-                #     y2 = clamp(n.position, y2+1, y2+node2.height-2)
-                #     x1 = (x1 + x2 + node2.width - 1)//2
-                #     x2 = x1
-
-                # w = max(3, x2 - x1+1)
-                # h = max(3, y2 - y1+1)
-     
-                # console.draw_frame(x1-offset_x, y1-offset_y, w, h, fg=frame_color, decoration="         ")
-                # console.print(x1-offset_x, y1-offset_y, "1", fg=color)
-                # console.print(x2-offset_x, y2-offset_y, "2", fg=color)    
-                count += 1
-                
-        console.print(1, 1, f"Connections: {count}")
-    
     def overworld_draw(self, player_pos: Position, console: tcod.console.Console) -> None:
         offset_x = player_pos.x - 49
         offset_y = player_pos.y - 20
