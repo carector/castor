@@ -66,14 +66,13 @@ class InGame(State):
     
     zones: list = []
     area_name: str = ""
-    count: int = 0
+    camera_follow_player: bool = True
     
     def __init__(self) -> None:
-        self.count = 0
         g.world = game.world_tools.new_world()
         g.log = game.menus.LogMenu(x=21, y=48, w=58, h=8)
         self.update_area_name("World of Wowzers")
-        print(g.dungeon.bsp.__repr__())
+        self.camera_follow_player = False
         # Play music
         # g.mixer = tcod.sdl.audio.BasicMixer(tcod.sdl.audio.open())
         # sound, sample_rate = soundfile.read("data/mus/mus_sadspiritiv.ogg")
@@ -90,10 +89,12 @@ class InGame(State):
         player_pos = player.components[Position]
         offset_x = player_pos.x - 49
         offset_y = player_pos.y - 20
+        if not self.camera_follow_player:
+            offset_x = -22
+            offset_y = -2
         
         # Draw overworld
         #self.overworld_draw(player_pos, console)
-        
         self.dungeon_draw(offset_x=offset_x, offset_y=offset_y, console=console)
         
         # Entities
@@ -104,12 +105,15 @@ class InGame(State):
             if not (gameframe_left <= pos.x-offset_x < gameframe_right and gameframe_top <= pos.y-offset_y < gameframe_bottom): continue   # Ignore offscreen
             console.rgb[["ch", "fg", "bg"]][pos.y-offset_y, pos.x-offset_x] = graphic.ch, graphic.fg, (0,0,0)
         
-        #self.gui_draw(player_pos, console)
+        self.gui_draw(player_pos, console)
+        
     
     def dungeon_draw(self, offset_x, offset_y, console: tcod.console.Console) -> None:
         # BSP dungeon test
+        if not self.camera_follow_player:
+            offset_x = -22
+            offset_y = -2
         rand = Random()
-        count = 0
         dungeon = g.dungeon
         
         for x in range(dungeon.width):
@@ -117,6 +121,7 @@ class InGame(State):
                 dx = x-offset_x
                 dy = y-offset_y
                 if dx >= console.width or dy >= console.height or dx < 0 or dy < 0: continue
+                if dungeon.map[max(0, x-1), y] == 1 and dungeon.map[min(x+1, dungeon.width-1), y] == 1 and dungeon.map[x, max(0, y-1)] == 1 and dungeon.map[x, min(y+1, dungeon.height-1)] == 1: continue
                 col = (0, 255, 0)
                 ch = ord("#")
                 match dungeon.map[x, y]:
@@ -129,14 +134,22 @@ class InGame(State):
                         
                 #console.put_char(dx, dy, ch)
                 console.rgb[["ch", "fg"]][dy, dx] = ch, col
+        
+        #console.draw_frame(dungeon.door_room.x-offset_x, dungeon.door_room.y-offset_y, dungeon.door_room.width, dungeon.door_room.height, clear=False)
                     
         # for node in dungeon.bsp.inverted_level_order():
         #     if not node.children:
         #         console.draw_frame(node.x-dungeon.bsp.x, node.y-dungeon.bsp.y, node.width, node.height, clear=False)
                 
     def overworld_draw(self, player_pos: Position, console: tcod.console.Console) -> None:
+        
+        lock_to_screen = True
         offset_x = player_pos.x - 49
         offset_y = player_pos.y - 20
+        
+        if lock_to_screen:
+            offset_x = -13
+            offset_y = -10
         
         # Terrain
         scale = 0.025
@@ -223,6 +236,9 @@ class InGame(State):
                     if not level.components[LevelContainer].within_bounds(player_pos.x, player_pos.y): continue
                     self.update_area_name(level.components[LevelContainer].id)
                     if level.components[LevelContainer].is_space_occupied(player_pos.x + DIRECTION_KEYS[sym][0], player_pos.y+DIRECTION_KEYS[sym][1]): return
+                
+                # Check for dungeon collision
+                if g.dungeon.map[player_pos.x + DIRECTION_KEYS[sym][0], player_pos.y + DIRECTION_KEYS[sym][1]] == 1: return
                 
                 player.components[Position] += DIRECTION_KEYS[sym]
                 

@@ -19,21 +19,6 @@ def new_world() -> Registry:
     
     rng = world[None].components[Random] = Random()
     
-    
-    
-    # Noise test
-    
-    
-    # Dungeon test
-    g.dungeon = Dungeon(0, 0, width=30, height=30, max_depth=4)
-    
-    # Import LDtk levels
-    for _, _, files in os.walk("data/ldtk/data", topdown=False):
-        for name in files:
-            level_data = json.loads(open(f"data/ldtk/data/{name}", 'r').read())
-            level = world[object()]
-            level.components[LevelContainer] = LevelContainer(level_data)
-    
     # Define player
     player = world[object()]
     player.components[Position] = Position(0, 0)
@@ -50,6 +35,16 @@ def new_world() -> Registry:
     actor.components[Graphic] = Graphic(ord("Φ"), fg=(127+32, 51+32, 0))
     actor.components[Position] = Position(-8, 1)
     actor.tags |= {IsActor}
+    
+    # Dungeon test
+    g.dungeon = Dungeon(x=0, y=0, width=56, height=36, max_depth=5, world=world)
+    
+    # Import LDtk levels
+    for _, _, files in os.walk("data/ldtk/data", topdown=False):
+        for name in files:
+            level_data = json.loads(open(f"data/ldtk/data/{name}", 'r').read())
+            level = world[object()]
+            level.components[LevelContainer] = LevelContainer(level_data)
     
     # Random gold placement
     # for _ in range(10):

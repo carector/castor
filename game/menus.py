@@ -124,7 +124,8 @@ class ListMenu(State):
     
     def on_cancel(self) -> StateResult:
         """Handle escape or right click being pressed on menus"""
-        return Pop()
+        return 
+    
     
     def on_draw(self, console: tcod.console.Console) -> None:
         """Render the menu"""

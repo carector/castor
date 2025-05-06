@@ -6,6 +6,7 @@ import tcod.ecs.callbacks
 from tcod.ecs import Entity
 import game.g as g
 import numpy as np
+from game.tags import IsPlayer
 from random import Random
 import math
 import libtcodpy
@@ -64,12 +65,13 @@ class Dungeon:
     height: int = 100
     seed: int = 12345
 
-    rooms: list[tuple] = attrs.field(init=False)
+    rooms: list[tcod.bsp.BSP] = attrs.field(init=False)
+    door_room: tcod.bsp.BSP = attrs.field(init=False)
     map: np.ndarray = attrs.field(init=False)
     rng: Random = attrs.field(init=False)
     bsp: tcod.bsp.BSP = attrs.field(init=False)    
     
-    def __init__(self, x: int, y: int, width: int, height: int, seed: int = 12345, max_depth: int = 3):
+    def __init__(self, x: int, y: int, width: int, height: int, seed: int = 12345, max_depth: int = 3, world: tcod.ecs.Registry = None):
         super().__init__()
         
         self.x = x
@@ -106,12 +108,10 @@ class Dungeon:
                 maxy = node.y + node.height - 1
                 
                 # Randomize room size
-                if True:
-                    minx = self.rng.randint(minx, maxx - MIN_WIDTH + 1)
-                    miny = self.rng.randint(miny, maxy - MIN_HEIGHT + 1)
-                    maxx = self.rng.randint(minx + MIN_WIDTH - 2, maxx)
-                    maxy = self.rng.randint(miny + MIN_HEIGHT - 2, maxy)
-                
+                minx = self.rng.randint(minx, maxx - MIN_WIDTH + 1)
+                miny = self.rng.randint(miny, maxy - MIN_HEIGHT + 1)
+                maxx = self.rng.randint(minx + MIN_WIDTH - 2, maxx)
+                maxy = self.rng.randint(miny + MIN_HEIGHT - 2, maxy)
                 
                 node.x = minx
                 node.y = miny
@@ -119,12 +119,12 @@ class Dungeon:
                 node.height = maxy-miny + 1
                 
                 # Dig out room
-                for x in range(minx, maxx + 1):
-                    for y in range(miny, maxy + 1):
-                        self.map[x, y] = 0      # 1 = blocked, 0 = unblocked
+                for dx in range(minx, maxx + 1):
+                    for dy in range(miny, maxy + 1):
+                        self.map[dx, dy] = 0      # 1 = blocked, 0 = unblocked
                                                 # TODO: Add attributes for `blocked`, `blocked_sight`, and `visited`
                                                 
-                self.rooms.append(((minx + maxx) / 2, (miny + maxy) / 2))
+                self.rooms.append(node) #((minx + maxx) / 2, (miny + maxy) / 2))
                 
             # Corridor
             else:
@@ -174,12 +174,48 @@ class Dungeon:
                         self.hline_left(right.x-1, y)
                         self.hline_right(right.x, y)
                         
-        # Remove any 1-char width walls
-        for ry in range(self.height-2):
-            for rx in range(self.width-2):
+        # Remove any 1-char width walls        
+        for ry in range(self.height-1):
+            for rx in range(self.width-1):
                 if self.map[rx, ry] != 1: continue
-                if self.map[rx-1, ry] == 0 or self.map[rx+1, ry] == 0:
-                    self.map[rx, ry] == 0
+                if self.map[rx-1, ry] == 0 and self.map[rx+1, ry] == 0:
+                    self.map[rx, ry] = 0
+                    
+        for rx in range(self.width-2):
+            for ry in range(self.height-2):            
+                if self.map[rx, ry] != 1: continue
+                if self.map[rx, ry-1] == 0 and self.map[rx, ry+1] == 0:
+                    self.map[rx, ry] = 0
+                    
+        # Restore border of dungeon
+        self.map[0] = np.ones(self.height)
+        self.map[self.width-1] = np.ones(self.height)
+        self.map[:, 0] = np.ones(self.width)
+        self.map[:, self.height-1] = np.ones(self.width)
+        
+        # Move player
+        player_room = self.rooms[self.rng.randint(0, len(self.rooms)-1)]
+        (player,) = world.Q.all_of(components=[], tags=[IsPlayer])
+        player.components[Position] = Position(player_room.x + self.rng.randint(1, player_room.width-2), player_room.y + self.rng.randint(1, player_room.height-2))
+        
+        # Place entrance in same room as player
+        up_door = world[object()]
+        # This sucks ass
+        up_door.components[Position] = Position(player_room.x + self.rng.randint(1, player_room.width-2), player_room.y + self.rng.randint(1, player_room.height-2))
+        while(player.components[Position].x == up_door.components[Position].x and player.components[Position].y == up_door.components[Position].y):
+            up_door.components[Position] = Position(player_room.x + self.rng.randint(1, player_room.width-2), player_room.y + self.rng.randint(1, player_room.height-2))
+        up_door.components[Graphic] = Graphic(ord("<"), fg=(255, 255, 255))
+        
+        
+        # Place exit
+        self.door_room = self.rooms[self.rng.randint(0, len(self.rooms)-1)]
+        while player_room == self.door_room:
+            self.door_room = self.rooms[self.rng.randint(0, len(self.rooms)-1)]
+            
+        down_door = world[object()]
+        down_door.components[Position] = Position(self.door_room.x + self.rng.randint(1, self.door_room.width-2), self.door_room.y + self.rng.randint(1, self.door_room.height-2))
+        down_door.components[Graphic] = Graphic(ord(">"), fg=(255, 255, 255))
+        
             
     # https://www.roguebasin.com/index.php?title=Complete_Roguelike_Tutorial,_using_Python%2Blibtcod,_extras#BSP_Dungeon_Generator
         
