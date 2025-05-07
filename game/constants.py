@@ -41,6 +41,17 @@ DIRECTION_KEYS: Final = {
     KeySym.n: (1, 1),
 }
 
+COLOR_PALLETE: Final = {
+    0: (255, 255, 255),
+    1: (255, 106, 0),
+    2: (0, 255, 0),
+    3: (128, 128, 128),
+    4: (128, 0, 128),
+    5: (64, 64, 255),
+    6: (255, 0, 0),
+    7: (232, 183, 150)
+}
+
 gameframe_left: Final = 21
 gameframe_right: Final = 79
 gameframe_top: Final = 1

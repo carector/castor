@@ -7,6 +7,7 @@ import tcod.console
 import tcod.sdl.audio
 import numpy as np
 from tcod.event import KeySym
+import game.constants
 import game.g as g
 from game.components import Gold, Graphic, Position, Actor, LevelContainer, Transfer
 from game.constants import DIRECTION_KEYS, NOISE_COLLISION_THRESH, gameframe_left, gameframe_right, gameframe_top, gameframe_bottom, logframe_bottom, logframe_top, logframe_right, logframe_left
@@ -104,11 +105,7 @@ class InGame(State):
         else:
             self.overworld_draw(player_pos, console)
         
-        
-        # Draw player
-        console.rgb[["ch", "fg", "bg"]][player_pos.y-offset_y, player_pos.x-offset_x] = player.components[Graphic].ch, player.components[Graphic].fg, (0,0,0)
-        
-        # Entities
+        # Draw entities
         for entity in world.Q.all_of(components=[Position, Graphic]):
             if entity == player: continue
             pos = entity.components[Position]
@@ -117,6 +114,10 @@ class InGame(State):
             if not (gameframe_left <= pos.x-offset_x < gameframe_right and gameframe_top <= pos.y-offset_y < gameframe_bottom): continue   # Ignore offscreen
             console.rgb[["ch", "fg", "bg"]][pos.y-offset_y, pos.x-offset_x] = graphic.ch, graphic.fg, (0,0,0)
         
+        # Draw player
+        console.rgb[["ch", "fg", "bg"]][player_pos.y-offset_y, player_pos.x-offset_x] = player.components[Graphic].ch, player.components[Graphic].fg, (0,0,0)
+        
+        # Draw GUI
         self.gui_draw(player_pos, console)
     
     def go_down_floor(self, exit_transfer_x: int, exit_transfer_y: int) -> None:
@@ -176,6 +177,7 @@ class InGame(State):
             origin=(offset_x*scale, offset_y*scale))
         ]
         
+        # Draw grass and terrain
         chars = [".", ",", "'", "`"]
         cols = [32, 16, 48, 64]
         it = np.nditer(g.grid, flags=['multi_index'])
@@ -190,24 +192,20 @@ class InGame(State):
             if(pos > NOISE_COLLISION_THRESH): ch = 0x2660
             console.rgb[["ch", "fg"]][it.multi_index[1], it.multi_index[0]] = ch, col
                 
-        # Level data
+        # Draw level containers
         for level_entity in g.world.Q.all_of(components=[LevelContainer]):
             # TODO: Check if level is on screen
             level = level_entity.components[LevelContainer]
             tiles = np.nditer(level.tiles, flags=['multi_index'])
-            intgrid = level.intgrid
+            colors = level.colors
             for tile in tiles:
                 if tile == 0: continue
-                t = tile
-                col = (255, 255, 255)
-                col_ind = intgrid[tiles.multi_index]
+                ch = tcod.tileset.CHARMAP_CP437[int(tile)]    # CP437 to ASCII
+                col = game.constants.COLOR_PALLETE[colors[tiles.multi_index]]
                 tx = tiles.multi_index[0]
                 ty = tiles.multi_index[1]
                 if not (0 <= tx+level.x-offset_x < 100 and 0 <= ty+level.y-offset_y < 50): continue   # Ignore offscreen
-                match col_ind:
-                    case 2: col = (0, 255, 0)
-                    case 4: col = (128, 0, 128)
-                console.rgb[["ch", "fg"]][ty+level.y-offset_y, tx+level.x-offset_x] = t, col
+                console.rgb[["ch", "fg"]][ty+level.y-offset_y, tx+level.x-offset_x] = ch, col
 
     def gui_draw(self, player_pos: Position, console: tcod.console.Console) -> None:
         # Windows

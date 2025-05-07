@@ -77,7 +77,9 @@ class LevelContainer:
     y: int = attrs.field(init=False)
     width: int = attrs.field(init=False)
     height: int = attrs.field(init=False)
-    intgrid: np.ndarray = attrs.field(init=False)
+    colors: np.ndarray = attrs.field(init=False)
+    collision: np.ndarray = attrs.field(init=False)
+    
     tiles: np.ndarray = attrs.field(init=False)
     id: str = attrs.field(init=False)
     
@@ -86,13 +88,14 @@ class LevelContainer:
         self.y = data["y"]
         self.width = data["width"]
         self.height = data["height"]
-        self.intgrid = np.reshape(data["intgrid"], (self.width, self.height), order="F")
+        self.colors = np.reshape(data["colors"], (self.width, self.height), order="F")
+        self.collision = np.reshape(data["collision"], (self.width, self.height), order="F")
         
         x, y, t = [], [], []
         for tile in data["tiles"]:
             x.append(tile["x"])
             y.append(tile["y"])
-            t.append(tile["t"])        
+            t.append(tile["t"])
         tilesnd = np.zeros((self.width, self.height))
         tilesnd[x, y] = t
         self.tiles = tilesnd
@@ -108,8 +111,8 @@ class LevelContainer:
         return 0 <= x - self.x <= self.width and 0 <= y - self.y <= self.height
     
     def is_space_occupied(self, x: int, y: int) -> bool:
-        """Returns true if intgrid tile is marked as solid."""
-        return self.intgrid[(x-self.x)%self.width, (y-self.y)%self.height] == 1
+        """Returns true if collision tile is marked as solid."""
+        return self.collision[(x-self.x)%self.width, (y-self.y)%self.height] == 1
     
     
     

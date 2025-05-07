@@ -22,7 +22,7 @@ def new_world() -> Registry:
     
     # Define player
     player = world[object()]
-    player.components[Position] = Position(0, 0)
+    player.components[Position] = Position(-11, 5)
     player.components[Graphic] = Graphic(ord("@"), fg=(255, 106, 0)) # 24 100 100
     player.components[Gold] = 0
     player.tags |= {IsPlayer, IsActor}

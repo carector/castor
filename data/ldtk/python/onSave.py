@@ -22,14 +22,17 @@ for level in data['levels']:
     level_data["y"] = level['worldY'] // grid_size
     level_data["width"] = level["pxWid"] // grid_size
     level_data["height"] = level["pxHei"] // grid_size
-    level_data["intgrid"] = level["layerInstances"][0]["intGridCsv"]
+    level_data["collision"] = level["layerInstances"][0]["intGridCsv"]
+    level_data["colors"] = level["layerInstances"][1]["intGridCsv"]
+    
     level_data["tiles"] = []
-    for tile in level["layerInstances"][1]["gridTiles"]:
+    for tile in level["layerInstances"][2]["gridTiles"]:
         t = {}
         t["x"] = tile["px"][0] // grid_size
         t["y"] = tile["px"][1] // grid_size
         t["t"] = tile["t"]
         level_data["tiles"].append(t)
         
+    # TODO: Entity support
         
     json.dump(level_data, f)
