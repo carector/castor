@@ -8,9 +8,9 @@ import tcod.sdl.audio
 import numpy as np
 from tcod.event import KeySym
 import game.g as g
-from game.components import Gold, Graphic, Position, Actor, LevelContainer
+from game.components import Gold, Graphic, Position, Actor, LevelContainer, Transfer
 from game.constants import DIRECTION_KEYS, NOISE_COLLISION_THRESH, gameframe_left, gameframe_right, gameframe_top, gameframe_bottom, logframe_bottom, logframe_top, logframe_right, logframe_left
-from game.tags import IsItem, IsPlayer, IsActor
+from game.tags import IsItem, IsPlayer
 from game.state import State, StateResult, Pop, Push, Reset
 import game.menus
 import game.world_tools
@@ -64,7 +64,7 @@ class InGame(State):
     """Primary in-game state.\n
     States will always use g.world to access the ECS registry."""
     
-    zones: list = []
+    dungeon_floors: list[game.world_tools.Dungeon] = []
     area_name: str = ""
     camera_follow_player: bool = True
     
@@ -73,6 +73,7 @@ class InGame(State):
         g.log = game.menus.LogMenu(x=21, y=48, w=58, h=8)
         self.update_area_name("World of Wowzers")
         self.camera_follow_player = False
+        self.dungeon_floors = []
         # Play music
         # g.mixer = tcod.sdl.audio.BasicMixer(tcod.sdl.audio.open())
         # sound, sample_rate = soundfile.read("data/mus/mus_sadspiritiv.ogg")
@@ -89,13 +90,19 @@ class InGame(State):
         player_pos = player.components[Position]
         offset_x = player_pos.x - 49
         offset_y = player_pos.y - 20
-        if not self.camera_follow_player:
+        
+        # Don't follow player if we're in a dungeon
+        if len(self.dungeon_floors) > 0:
             offset_x = -22
             offset_y = -2
         
-        # Draw overworld
-        #self.overworld_draw(player_pos, console)
-        self.dungeon_draw(offset_x=offset_x, offset_y=offset_y, console=console)
+        # Draw overworld or dungeon
+        if len(self.dungeon_floors) > 0:
+            self.dungeon_draw(dungeon=self.dungeon_floors[-1], console=console)
+        
+        else:
+            self.overworld_draw(player_pos, console)
+        
         
         # Entities
         for entity in g.world.Q.all_of(components=[Position, Graphic]):
@@ -106,15 +113,19 @@ class InGame(State):
             console.rgb[["ch", "fg", "bg"]][pos.y-offset_y, pos.x-offset_x] = graphic.ch, graphic.fg, (0,0,0)
         
         self.gui_draw(player_pos, console)
-        
     
-    def dungeon_draw(self, offset_x, offset_y, console: tcod.console.Console) -> None:
-        # BSP dungeon test
-        if not self.camera_follow_player:
-            offset_x = -22
-            offset_y = -2
+    def go_down_floor(self, exit_transfer_x: int, exit_transfer_y: int) -> None:
+        new_dungeon = game.world_tools.Dungeon(x=0, y=0, width=56, height=36, max_depth=6, world=g.world, seed=123444)
+        self.dungeon_floors.append(new_dungeon)
+        
+    def go_up_floor(self) -> None:
+        d = self.dungeon_floors.pop()
+        del d
+    
+    def dungeon_draw(self, dungeon: game.world_tools.Dungeon, console: tcod.console.Console) -> None:
+        offset_x = -22
+        offset_y = -2
         rand = Random()
-        dungeon = g.dungeon
         
         for x in range(dungeon.width):
             for y in range(dungeon.height):    
@@ -221,24 +232,39 @@ class InGame(State):
             # Movement
             case tcod.event.KeyDown(sym=sym) if sym in DIRECTION_KEYS:
                 player_pos = player.components[Position]
+                
                 # Check for actor collision
-                for actor in g.world.Q.all_of(tags=[player_pos + DIRECTION_KEYS[sym], IsActor]): 
+                for actor in g.world.Q.all_of(tags=[player_pos + DIRECTION_KEYS[sym]], components=[Actor]): 
                     actor.components[Actor].on_interact()
                     return
                 g.current_actor = None
-
-                # Check for terrain collision
-                #val = g.grid[28 + DIRECTION_KEYS[sym][0], 19 + DIRECTION_KEYS[sym][1]]
-                #if val > NOISE_COLLISION_THRESH: return None
                 
-                # Check for level collision
-                for level in g.world.Q.all_of(components=[LevelContainer]):
-                    if not level.components[LevelContainer].within_bounds(player_pos.x, player_pos.y): continue
-                    self.update_area_name(level.components[LevelContainer].id)
-                    if level.components[LevelContainer].is_space_occupied(player_pos.x + DIRECTION_KEYS[sym][0], player_pos.y+DIRECTION_KEYS[sym][1]): return
+                # Check for transfers
+                for transferobj in g.world.Q.all_of(tags=[player_pos + DIRECTION_KEYS[sym]], components=[Transfer]): 
+                    transfer = transferobj.components[Transfer]
+                    if transfer.is_down:
+                        self.go_down_floor(exit_transfer_x=player_pos.x, exit_transfer_y=player_pos.y)
+                    else:
+                        self.go_up_floor()
+                    
+                    player_pos = Position(transfer.transfer_x, transfer.transfer_y)
+                
+                # Check for overworld collision
+                if len(self.dungeon_floors) == 0:
+                    # Terrain
+                    # val = g.grid[28 + DIRECTION_KEYS[sym][0], 19 + DIRECTION_KEYS[sym][1]]
+                    # if val > NOISE_COLLISION_THRESH: return None
+                    
+                    # LDtk levels
+                    for level in g.world.Q.all_of(components=[LevelContainer]):
+                        if not level.components[LevelContainer].within_bounds(player_pos.x, player_pos.y): continue
+                        self.update_area_name(level.components[LevelContainer].id)
+                        if level.components[LevelContainer].is_space_occupied(player_pos.x + DIRECTION_KEYS[sym][0], player_pos.y+DIRECTION_KEYS[sym][1]): return
                 
                 # Check for dungeon collision
-                if g.dungeon.map[player_pos.x + DIRECTION_KEYS[sym][0], player_pos.y + DIRECTION_KEYS[sym][1]] == 1: return
+                else:
+                    dungeon = self.dungeon_floors[-1]
+                    if dungeon.map[player_pos.x + DIRECTION_KEYS[sym][0], player_pos.y + DIRECTION_KEYS[sym][1]] == 1: return
                 
                 player.components[Position] += DIRECTION_KEYS[sym]
                 
