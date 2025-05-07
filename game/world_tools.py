@@ -2,6 +2,7 @@
 from __future__ import annotations
 from random import Random
 from tcod.ecs import Registry
+import tcod.ecs
 from game.components import Gold, Graphic, Position, Actor, LevelContainer, Transfer
 from game.tags import IsActor, IsItem, IsPlayer
 from game import g
@@ -75,11 +76,12 @@ class Dungeon:
     door_room: tcod.bsp.BSP = attrs.field(init=False)
     map: np.ndarray = attrs.field(init=False)
     rng: Random = attrs.field(init=False)
-    bsp: tcod.bsp.BSP = attrs.field(init=False)    
-    entrance: object = attrs.field(init=False)    
+    bsp: tcod.bsp.BSP = attrs.field(init=False)
+    world: tcod.ecs.Registry = attrs.field(init=False)
+    entrance: object = attrs.field(init=False)
     exit: object = attrs.field(init=False)
     
-    def __init__(self, x: int, y: int, width: int, height: int, seed: int = 12345, max_depth: int = 3, world: tcod.ecs.Registry = None, exit_x: int = 0, exit_y: int = 0):
+    def __init__(self, x: int, y: int, width: int, height: int, seed: int = 12345, max_depth: int = 3, exit_x: int = 0, exit_y: int = 0):
         super().__init__()
         
         self.x = x
@@ -91,6 +93,7 @@ class Dungeon:
         self.bsp = tcod.bsp.BSP(x=x, y=y, width=width, height=height)
         self.map = np.ones(shape=(width, height))
         self.rooms = []
+        self.world = Registry()
         
         MIN_WIDTH = 5
         MIN_HEIGHT = 5
@@ -203,15 +206,14 @@ class Dungeon:
         
         # Move player
         player_room = self.rooms[self.rng.randint(0, len(self.rooms)-1)]
-        (player,) = world.Q.all_of(components=[], tags=[IsPlayer])
+        (player,) = g.world.Q.all_of(components=[], tags=[IsPlayer])
         player.components[Position] = Position(player_room.x + self.rng.randint(1, player_room.width-2), player_room.y + self.rng.randint(1, player_room.height-2))
         
         # Place entrance in same room as player
-        up_door = world[object()]
+        up_door = self.world[object()]
         up_door.components[Transfer] = Transfer(exit_x, exit_y, False)
         self.entrance = up_door
         
-        # This sucks ass
         up_door.components[Position] = Position(player_room.x + self.rng.randint(1, player_room.width-2), player_room.y + self.rng.randint(1, player_room.height-2))
         while(player.components[Position].x == up_door.components[Position].x and player.components[Position].y == up_door.components[Position].y):
             up_door.components[Position] = Position(player_room.x + self.rng.randint(1, player_room.width-2), player_room.y + self.rng.randint(1, player_room.height-2))
@@ -222,7 +224,7 @@ class Dungeon:
         while player_room == self.door_room:
             self.door_room = self.rooms[self.rng.randint(0, len(self.rooms)-1)]
             
-        down_door = world[object()]
+        down_door = self.world[object()]
         down_door.components[Position] = Position(self.door_room.x + self.rng.randint(1, self.door_room.width-2), self.door_room.y + self.rng.randint(1, self.door_room.height-2))
         down_door.components[Graphic] = Graphic(ord(">"), fg=(255, 255, 255))
         down_door.components[Transfer] = Transfer(0, 0, True)

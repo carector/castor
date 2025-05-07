@@ -66,13 +66,11 @@ class InGame(State):
     
     dungeon_floors: list[game.world_tools.Dungeon] = []
     area_name: str = ""
-    camera_follow_player: bool = True
     
     def __init__(self) -> None:
         g.world = game.world_tools.new_world()
         g.log = game.menus.LogMenu(x=21, y=48, w=58, h=8)
         self.update_area_name("World of Wowzers")
-        self.camera_follow_player = False
         self.dungeon_floors = []
         # Play music
         # g.mixer = tcod.sdl.audio.BasicMixer(tcod.sdl.audio.open())
@@ -86,6 +84,9 @@ class InGame(State):
     # Handle event draw
     def on_draw(self, console: tcod.console.Console) -> None:
         """Draw the standard screen."""
+        
+        world = g.world if len(self.dungeon_floors) == 0 else self.dungeon_floors[-1].world
+        
         (player,) = g.world.Q.all_of(components=[], tags=[IsPlayer])
         player_pos = player.components[Position]
         offset_x = player_pos.x - 49
@@ -104,8 +105,12 @@ class InGame(State):
             self.overworld_draw(player_pos, console)
         
         
+        # Draw player
+        console.rgb[["ch", "fg", "bg"]][player_pos.y-offset_y, player_pos.x-offset_x] = player.components[Graphic].ch, player.components[Graphic].fg, (0,0,0)
+        
         # Entities
-        for entity in g.world.Q.all_of(components=[Position, Graphic]):
+        for entity in world.Q.all_of(components=[Position, Graphic]):
+            if entity == player: continue
             pos = entity.components[Position]
             graphic = entity.components[Graphic]
 
@@ -115,12 +120,16 @@ class InGame(State):
         self.gui_draw(player_pos, console)
     
     def go_down_floor(self, exit_transfer_x: int, exit_transfer_y: int) -> None:
-        new_dungeon = game.world_tools.Dungeon(x=0, y=0, width=56, height=36, max_depth=6, world=g.world, seed=123444)
+        new_dungeon = game.world_tools.Dungeon(x=0, y=0, width=56, height=36, max_depth=6, seed=123444, exit_x=exit_transfer_x, exit_y=exit_transfer_y)
+        if len(self.dungeon_floors) == 0:
+            g.log.add_item("You venture into the dungeon.")
+        else:
+            g.log.add_item("You venture further into the dungeon.")
         self.dungeon_floors.append(new_dungeon)
         
     def go_up_floor(self) -> None:
+        g.log.add_item("You exit the dungeon floor.")
         d = self.dungeon_floors.pop()
-        del d
     
     def dungeon_draw(self, dungeon: game.world_tools.Dungeon, console: tcod.console.Console) -> None:
         offset_x = -22
@@ -157,10 +166,6 @@ class InGame(State):
         lock_to_screen = True
         offset_x = player_pos.x - 49
         offset_y = player_pos.y - 20
-        
-        if lock_to_screen:
-            offset_x = -13
-            offset_y = -10
         
         # Terrain
         scale = 0.025
@@ -227,6 +232,7 @@ class InGame(State):
     # Handle events        
     def on_event(self, event: tcod.event.Event) -> StateResult:
         """Handle events for the in-game state."""
+        world = g.world if len(self.dungeon_floors) == 0 else self.dungeon_floors[-1].world
         (player,) = g.world.Q.all_of(components=[], tags=[IsPlayer])
         match event:
             # Movement
@@ -234,20 +240,21 @@ class InGame(State):
                 player_pos = player.components[Position]
                 
                 # Check for actor collision
-                for actor in g.world.Q.all_of(tags=[player_pos + DIRECTION_KEYS[sym]], components=[Actor]): 
+                for actor in world.Q.all_of(tags=[player_pos + DIRECTION_KEYS[sym]], components=[Actor]): 
                     actor.components[Actor].on_interact()
                     return
                 g.current_actor = None
                 
                 # Check for transfers
-                for transferobj in g.world.Q.all_of(tags=[player_pos + DIRECTION_KEYS[sym]], components=[Transfer]): 
+                for transferobj in world.Q.all_of(tags=[player_pos + DIRECTION_KEYS[sym]], components=[Transfer]): 
                     transfer = transferobj.components[Transfer]
                     if transfer.is_down:
                         self.go_down_floor(exit_transfer_x=player_pos.x, exit_transfer_y=player_pos.y)
                     else:
                         self.go_up_floor()
-                    
-                    player_pos = Position(transfer.transfer_x, transfer.transfer_y)
+                        player.components[Position] = Position(transfer.transfer_x, transfer.transfer_y)
+                        player_pos = player.components[Position]
+                    return
                 
                 # Check for overworld collision
                 if len(self.dungeon_floors) == 0:
@@ -256,7 +263,7 @@ class InGame(State):
                     # if val > NOISE_COLLISION_THRESH: return None
                     
                     # LDtk levels
-                    for level in g.world.Q.all_of(components=[LevelContainer]):
+                    for level in world.Q.all_of(components=[LevelContainer]):
                         if not level.components[LevelContainer].within_bounds(player_pos.x, player_pos.y): continue
                         self.update_area_name(level.components[LevelContainer].id)
                         if level.components[LevelContainer].is_space_occupied(player_pos.x + DIRECTION_KEYS[sym][0], player_pos.y+DIRECTION_KEYS[sym][1]): return
@@ -269,7 +276,7 @@ class InGame(State):
                 player.components[Position] += DIRECTION_KEYS[sym]
                 
                 # Pick up gold on the same space as the player
-                for gold in g.world.Q.all_of(components=[Gold], tags=[player.components[Position], IsItem]):
+                for gold in world.Q.all_of(components=[Gold], tags=[player.components[Position], IsItem]):
                     player.components[Gold] += gold.components[Gold]
                     text = f"Picked up {gold.components[Gold]}g, total: {player.components[Gold]}g"
                     g.log.add_item(f"Picked up {gold.components[Gold]}g, total: {player.components[Gold]}g")
