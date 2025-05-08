@@ -32,7 +32,21 @@ for level in data['levels']:
         t["y"] = tile["px"][1] // grid_size
         t["t"] = tile["t"]
         level_data["tiles"].append(t)
-        
-    # TODO: Entity support
+    
+    level_data["entities"] = []
+    for entity in level["layerInstances"][3]["entityInstances"]:
+        e = {}
+        e["x"] = entity["__grid"][0]
+        e["y"] = entity["__grid"][1]
+        e["id"] = entity["__identifier"]
+        field_instances = []
+        for field in entity["fieldInstances"]:
+            fi = {}
+            fi["id"] = field["__identifier"]
+            fi["value"] = field["__value"]
+            field_instances.append(fi)        
+            
+        e["field_instances"] = field_instances
+        level_data["entities"].append(e)
         
     json.dump(level_data, f)

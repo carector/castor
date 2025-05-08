@@ -38,19 +38,19 @@ def new_world() -> Registry:
     actor.tags |= {IsActor}
     
     # Dungeon entrance
-    dungeon_entrance = world[object()]
-    dungeon_entrance.components[Position] = Position(0, -10)
-    dungeon_entrance.components[Transfer] = Transfer(0, 0, True)
-    dungeon_entrance.components[Graphic] = Graphic(ord(">"), fg=(255, 255, 255))
+    #dungeon_entrance = world[object()]
+    #dungeon_entrance.components[Position] = Position(0, -10)
+    #dungeon_entrance.components[Transfer] = Transfer(0, 0, True)
+    #dungeon_entrance.components[Graphic] = Graphic(ord(">"), fg=(255, 255, 255))
     
-    dungeon_entrance.tags |= {}
+    #dungeon_entrance.tags |= {}
     
     # Import LDtk levels
     for _, _, files in os.walk("data/ldtk/data", topdown=False):
         for name in files:
             level_data = json.loads(open(f"data/ldtk/data/{name}", 'r').read())
             level = world[object()]
-            level.components[LevelContainer] = LevelContainer(level_data)
+            level.components[LevelContainer] = LevelContainer(level_data, world=world)
     
     # Random gold placement
     # for _ in range(10):

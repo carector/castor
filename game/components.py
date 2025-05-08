@@ -83,7 +83,7 @@ class LevelContainer:
     tiles: np.ndarray = attrs.field(init=False)
     id: str = attrs.field(init=False)
     
-    def __init__(self, data: map) -> None:
+    def __init__(self, data: map, world: tcod.ecs.Registry) -> None:
         self.x = data["x"]
         self.y = data["y"]
         self.width = data["width"]
@@ -100,6 +100,15 @@ class LevelContainer:
         tilesnd[x, y] = t
         self.tiles = tilesnd
         self.id = data["id"]
+        
+        for entity in data["entities"]:
+            e = world[object()]
+            e.components[Position] = Position(entity["x"] + self.x, entity["y"] + self.y)
+            
+            match entity["id"]:
+                case "transfer":
+                    e.components[Transfer] = Transfer(0, 0, True)
+                    e.components[Graphic] = Graphic(ch=ord(">"))
     
     # Top left corner is (0, 0) level local space
     # def level_visible(self, x: int, y: int, w: int, h: int) -> bool:
