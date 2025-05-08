@@ -74,10 +74,10 @@ class InGame(State):
         self.update_area_name("World of Wowzers")
         self.dungeon_floors = []
         # Play music
-        # g.mixer = tcod.sdl.audio.BasicMixer(tcod.sdl.audio.open())
-        # sound, sample_rate = soundfile.read("data/mus/mus_sadspiritiv.ogg")
-        # sound = g.mixer.device.convert(sound, sample_rate)
-        # channel = g.mixer.play(sound, volume=0.25)
+        g.mixer = tcod.sdl.audio.BasicMixer(tcod.sdl.audio.open())
+        sound, sample_rate = soundfile.read("data/mus/mus_sadspiritiv.ogg")
+        sound = g.mixer.device.convert(sound, sample_rate)
+        channel = g.mixer.play(sound, volume=0.25)
     
     def update_area_name(self, name: str) -> None:
         self.area_name = name
@@ -127,10 +127,13 @@ class InGame(State):
         else:
             g.log.add_item("You venture further into the dungeon.")
         self.dungeon_floors.append(new_dungeon)
+        self.update_area_name(f"Floor {len(self.dungeon_floors)}")
+        
         
     def go_up_floor(self) -> None:
         g.log.add_item("You exit the dungeon floor.")
         d = self.dungeon_floors.pop()
+        if len(self.dungeon_floors) > 0: self.update_area_name(f"Floor {len(self.dungeon_floors)}")
     
     def dungeon_draw(self, dungeon: game.world_tools.Dungeon, console: tcod.console.Console) -> None:
         offset_x = -22
@@ -261,10 +264,14 @@ class InGame(State):
                     # if val > NOISE_COLLISION_THRESH: return None
                     
                     # LDtk levels
+                    found_level = False
                     for level in world.Q.all_of(components=[LevelContainer]):
                         if not level.components[LevelContainer].within_bounds(player_pos.x, player_pos.y): continue
-                        self.update_area_name(level.components[LevelContainer].id)
+                        found_level = True
+                        self.update_area_name(level.components[LevelContainer].field_instances["name"])
                         if level.components[LevelContainer].is_space_occupied(player_pos.x + DIRECTION_KEYS[sym][0], player_pos.y+DIRECTION_KEYS[sym][1]): return
+                        
+                    if not found_level: self.update_area_name("Woods of Gloom")
                 
                 # Check for dungeon collision
                 else:

@@ -79,6 +79,7 @@ class LevelContainer:
     height: int = attrs.field(init=False)
     colors: np.ndarray = attrs.field(init=False)
     collision: np.ndarray = attrs.field(init=False)
+    field_instances: map = attrs.field(init=False)
     
     tiles: np.ndarray = attrs.field(init=False)
     id: str = attrs.field(init=False)
@@ -101,6 +102,10 @@ class LevelContainer:
         self.tiles = tilesnd
         self.id = data["id"]
         
+        self.field_instances = {}
+        for fi in data["field_instances"]:
+            self.field_instances[fi["id"]] = fi["value"]
+            
         for entity in data["entities"]:
             e = world[object()]
             e.components[Position] = Position(entity["x"] + self.x, entity["y"] + self.y)

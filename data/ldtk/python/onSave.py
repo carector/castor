@@ -24,6 +24,12 @@ for level in data['levels']:
     level_data["height"] = level["pxHei"] // grid_size
     level_data["collision"] = level["layerInstances"][0]["intGridCsv"]
     level_data["colors"] = level["layerInstances"][1]["intGridCsv"]
+    level_data["field_instances"] = []
+    for field in level["fieldInstances"]:
+        fi = {}
+        fi["id"] = field["__identifier"]
+        fi["value"] = field["__value"]
+        level_data["field_instances"].append(fi)
     
     level_data["tiles"] = []
     for tile in level["layerInstances"][2]["gridTiles"]:
