@@ -3,7 +3,7 @@ from __future__ import annotations
 from random import Random
 from tcod.ecs import Registry
 import tcod.ecs
-from game.components import Gold, Graphic, Position, Actor, LevelContainer, Transfer
+from game.components import Gold, Graphic, Position, Actor, LevelContainer, Transfer, Enemy
 from game.tags import IsActor, IsItem, IsPlayer
 from game import g
 import attrs
@@ -229,6 +229,14 @@ class Dungeon:
         down_door.components[Graphic] = Graphic(ord(">"), fg=(255, 255, 255))
         down_door.components[Transfer] = Transfer(0, 0, True)
         self.exit = down_door
+        
+        # Place test enemy
+        enemy = self.world[object()]
+        enemy_room = self.rooms[self.rng.randint(0, len(self.rooms)-1)]
+        enemy.components[Position] = Position(enemy_room.x + self.rng.randint(1, enemy_room.width-2), enemy_room.y + self.rng.randint(1, enemy_room.height-2))
+        enemy.components[Graphic] = Graphic(ord("F"), (255, 0, 0))
+        enemy.components[Enemy] = Enemy(enemy.components[Position], tcod.path.AStar())  # TODO look into tcod.map for los
+        
         
             
     # https://www.roguebasin.com/index.php?title=Complete_Roguelike_Tutorial,_using_Python%2Blibtcod,_extras#BSP_Dungeon_Generator

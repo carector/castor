@@ -9,7 +9,7 @@ import numpy as np
 from tcod.event import KeySym
 import game.constants
 import game.g as g
-from game.components import Gold, Graphic, Position, Actor, LevelContainer, Transfer
+from game.components import Gold, Graphic, Position, Actor, LevelContainer, Transfer, Enemy
 from game.constants import DIRECTION_KEYS, NOISE_COLLISION_THRESH, gameframe_left, gameframe_right, gameframe_top, gameframe_bottom, logframe_bottom, logframe_top, logframe_right, logframe_left
 from game.tags import IsItem, IsPlayer
 from game.state import State, StateResult, Pop, Push, Reset
@@ -74,10 +74,12 @@ class InGame(State):
         self.update_area_name("World of Wowzers")
         self.dungeon_floors = []
         # Play music
-        g.mixer = tcod.sdl.audio.BasicMixer(tcod.sdl.audio.open())
-        sound, sample_rate = soundfile.read("data/mus/mus_sadspiritiv.ogg")
-        sound = g.mixer.device.convert(sound, sample_rate)
-        channel = g.mixer.play(sound, volume=0.25)
+        # if g.mixer:
+        #     g.mixer.stop()
+        # g.mixer = tcod.sdl.audio.BasicMixer(tcod.sdl.audio.open())
+        # sound, sample_rate = soundfile.read("data/mus/mus_sadspiritiv.ogg")
+        # sound = g.mixer.device.convert(sound, sample_rate)
+        # channel = g.mixer.play(sound, volume=0.25)
     
     def update_area_name(self, name: str) -> None:
         self.area_name = name
@@ -277,6 +279,11 @@ class InGame(State):
                 else:
                     dungeon = self.dungeon_floors[-1]
                     if dungeon.map[player_pos.x + DIRECTION_KEYS[sym][0], player_pos.y + DIRECTION_KEYS[sym][1]] == 1: return
+                    
+                    # Enemy movement
+                    #for enemy in world.Q.all_of(components=[Enemy]):
+                        #enemy.components[Enemy].enemy_tick(player=player_pos)
+                
                 
                 player.components[Position] += DIRECTION_KEYS[sym]
                 

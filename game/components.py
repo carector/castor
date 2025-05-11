@@ -24,7 +24,24 @@ class Position:
         """Add a vector to this position."""
         x, y = direction
         return self.__class__(self.x + x, self.y + y)
+  
+@attrs.define(frozen=True)
+class Enemy:
+    """Test enemy component"""
+    pos: Position
+    path: tcod.path.AStar
     
+    def enemy_tick(self, player: Position):
+        # Deal damage if within 1 space
+        if abs(player.x - self.pos.x) == 1 or abs(player.y - self.pos.y) == 1:
+            print("Gotcha")
+            
+        # Move towards player otherwise
+        else:
+            move = self.path.get_path(self.pos.x, self.pos.y, player.x, player.y)[0]
+            pos += Position(move[0], move[1])
+        
+  
 @tcod.ecs.callbacks.register_component_changed(component=Position)
 def on_position_changed(entity: Entity, old: Position | None, new : Position | None) -> None:
     """Mirror position components as a tag."""
