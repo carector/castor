@@ -235,7 +235,7 @@ class Dungeon:
         enemy_room = self.rooms[self.rng.randint(0, len(self.rooms)-1)]
         enemy.components[Position] = Position(enemy_room.x + self.rng.randint(1, enemy_room.width-2), enemy_room.y + self.rng.randint(1, enemy_room.height-2))
         enemy.components[Graphic] = Graphic(ord("F"), (255, 0, 0))
-        enemy.components[Enemy] = Enemy(pos=enemy.components[Position], path=tcod.path.AStar(cost=self.map, diagonal=0))
+        enemy.components[Enemy] = Enemy(path=tcod.path.AStar(cost=self.map, diagonal=0))
         
         
             

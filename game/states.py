@@ -282,7 +282,7 @@ class InGame(State):
                     
                     # Enemy movement
                     for enemy in world.Q.all_of(components=[Enemy]):
-                        dir = enemy.components[Enemy].enemy_tick(player=player_pos)
+                        dir = enemy.components[Enemy].enemy_tick(player=player_pos, pos=enemy.components[Position])
                         enemy.components[Position] = Position(dir[0], dir[1])
                 
                 
