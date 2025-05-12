@@ -147,11 +147,11 @@ class InGame(State):
                 dx = x-offset_x
                 dy = y-offset_y
                 if dx >= console.width or dy >= console.height or dx < 0 or dy < 0: continue
-                if dungeon.map[max(0, x-1), y] == 1 and dungeon.map[min(x+1, dungeon.width-1), y] == 1 and dungeon.map[x, max(0, y-1)] == 1 and dungeon.map[x, min(y+1, dungeon.height-1)] == 1: continue
+                if dungeon.map[max(0, x-1), y] == 0 and dungeon.map[min(x+1, dungeon.width-1), y] == 0 and dungeon.map[x, max(0, y-1)] == 0 and dungeon.map[x, min(y+1, dungeon.height-1)] == 0: continue
                 col = (0, 255, 0)
                 ch = ord("#")
                 match dungeon.map[x, y]:
-                    case 0:
+                    case 1:
                         col = (128, 128, 128)
                         ch = ord(".")
                     case 2:
@@ -278,11 +278,12 @@ class InGame(State):
                 # Check for dungeon collision
                 else:
                     dungeon = self.dungeon_floors[-1]
-                    if dungeon.map[player_pos.x + DIRECTION_KEYS[sym][0], player_pos.y + DIRECTION_KEYS[sym][1]] == 1: return
+                    if dungeon.map[player_pos.x + DIRECTION_KEYS[sym][0], player_pos.y + DIRECTION_KEYS[sym][1]] == 0: return
                     
                     # Enemy movement
-                    #for enemy in world.Q.all_of(components=[Enemy]):
-                        #enemy.components[Enemy].enemy_tick(player=player_pos)
+                    for enemy in world.Q.all_of(components=[Enemy]):
+                        dir = enemy.components[Enemy].enemy_tick(player=player_pos)
+                        enemy.components[Position] = Position(dir[0], dir[1])
                 
                 
                 player.components[Position] += DIRECTION_KEYS[sym]

@@ -33,13 +33,14 @@ class Enemy:
     
     def enemy_tick(self, player: Position):
         # Deal damage if within 1 space
-        if abs(player.x - self.pos.x) == 1 or abs(player.y - self.pos.y) == 1:
+        if abs(player.x - self.pos.x) <= 1 and abs(player.y - self.pos.y) <= 1:
             print("Gotcha")
             
         # Move towards player otherwise
         else:
-            move = self.path.get_path(self.pos.x, self.pos.y, player.x, player.y)[0]
-            pos += Position(move[0], move[1])
+            move = self.path.get_path(self.pos.x, self.pos.y, player.x, player.y)
+            if len(move) == 0: return
+            return move[0]
         
   
 @tcod.ecs.callbacks.register_component_changed(component=Position)
