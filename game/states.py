@@ -142,21 +142,23 @@ class InGame(State):
         offset_y = -2
         rand = Random()
         
+        (player,) = g.world.Q.all_of(components=[], tags=[IsPlayer])
+        player_pos = player.components[Position]
+        
+        mask = tcod.map.compute_fov(transparency=dungeon.map.transparent, pov=(player_pos.x, player_pos.y))
+        
         for x in range(dungeon.width):
             for y in range(dungeon.height):    
                 dx = x-offset_x
                 dy = y-offset_y
                 if dx >= console.width or dy >= console.height or dx < 0 or dy < 0: continue
-                if dungeon.map[max(0, x-1), y] == 0 and dungeon.map[min(x+1, dungeon.width-1), y] == 0 and dungeon.map[x, max(0, y-1)] == 0 and dungeon.map[x, min(y+1, dungeon.height-1)] == 0: continue
+                if not dungeon.map.transparent[max(0, x-1), y] and not dungeon.map.transparent[min(x+1, dungeon.width-1), y] and not dungeon.map.transparent[x, max(0, y-1)] and not dungeon.map.transparent[x, min(y+1, dungeon.height-1)]: continue
+                if not mask[x, y]: continue
                 col = (0, 255, 0)
                 ch = ord("#")
-                match dungeon.map[x, y]:
-                    case 1:
-                        col = (128, 128, 128)
-                        ch = ord(".")
-                    case 2:
-                        col = (255, 0, 0)
-                        ch = ord("^")
+                if dungeon.map.transparent[x, y]:
+                    col = (128, 128, 128)
+                    ch = ord(".")
                         
                 #console.put_char(dx, dy, ch)
                 console.rgb[["ch", "fg"]][dy, dx] = ch, col
@@ -278,7 +280,7 @@ class InGame(State):
                 # Check for dungeon collision
                 else:
                     dungeon = self.dungeon_floors[-1]
-                    if dungeon.map[player_pos.x + DIRECTION_KEYS[sym][0], player_pos.y + DIRECTION_KEYS[sym][1]] == 0: return
+                    if not dungeon.map.walkable[player_pos.x + DIRECTION_KEYS[sym][0], player_pos.y + DIRECTION_KEYS[sym][1]]: return
                     
                     # Enemy movement
                     for enemy in world.Q.all_of(components=[Enemy]):

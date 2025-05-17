@@ -24,7 +24,7 @@ class Position:
         """Add a vector to this position."""
         x, y = direction
         return self.__class__(self.x + x, self.y + y)
-  
+
 @attrs.define(frozen=True)
 class Enemy:
     """Test enemy component"""
@@ -41,7 +41,7 @@ class Enemy:
             if len(move) == 0: return (pos.x, pos.y)
             return move[0]
         
-  
+
 @tcod.ecs.callbacks.register_component_changed(component=Position)
 def on_position_changed(entity: Entity, old: Position | None, new : Position | None) -> None:
     """Mirror position components as a tag."""
@@ -78,7 +78,7 @@ class Transfer:
     transfer_x: int = 0
     transfer_y: int = 0
     is_down: bool = True       # Whether this leads to a lower dungeon floor
-                        # If false, leads upwards 
+                               # If false, leads upwards 
     
     def __init__(self, transfer_x: int, transfer_y: int, is_down: bool) -> None:
         self.transfer_x = transfer_x

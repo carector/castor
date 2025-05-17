@@ -74,7 +74,7 @@ class Dungeon:
 
     rooms: list[tcod.bsp.BSP] = attrs.field(init=False)
     door_room: tcod.bsp.BSP = attrs.field(init=False)
-    map: np.ndarray = attrs.field(init=False)
+    map: tcod.map.Map = attrs.field(init=False)
     rng: Random = attrs.field(init=False)
     bsp: tcod.bsp.BSP = attrs.field(init=False)
     world: tcod.ecs.Registry = attrs.field(init=False)
@@ -92,6 +92,7 @@ class Dungeon:
         self.rng = tcod.random.Random(seed)
         self.bsp = tcod.bsp.BSP(x=x, y=y, width=width, height=height)
         self.map = np.zeros(shape=(width, height), dtype = np.uint32)
+        self.map = tcod.map.Map(width=width, height=height, order='F')
         self.rooms = []
         self.world = Registry()
         
@@ -132,7 +133,9 @@ class Dungeon:
                 # Dig out room
                 for dx in range(minx, maxx + 1):
                     for dy in range(miny, maxy + 1):
-                        self.map[dx, dy] = 1      # 1 = unblocked, 0 = blocked
+                        self.map.transparent[dx, dy] = True
+                        self.map.walkable[dx, dy] = True
+                        # 1 = unblocked, 0 = blocked
                                                 # TODO: Add attributes for `blocked`, `blocked_sight`, and `visited`
                                                 
                 self.rooms.append(node) #((minx + maxx) / 2, (miny + maxy) / 2))
@@ -188,21 +191,28 @@ class Dungeon:
         # Remove any 1-char width walls        
         for ry in range(self.height-1):
             for rx in range(self.width-1):
-                if self.map[rx, ry] != 0: continue
-                if self.map[rx-1, ry] == 1 and self.map[rx+1, ry] == 1:
-                    self.map[rx, ry] = 1
+                if self.map.transparent[rx, ry]: continue
+                if self.map.transparent[rx-1, ry] and self.map.transparent[rx+1, ry]:
+                    self.map.transparent[rx, ry] = True
+                    self.map.walkable[rx, ry] = True
                     
         for rx in range(self.width-2):
             for ry in range(self.height-2):            
-                if self.map[rx, ry] != 0: continue
-                if self.map[rx, ry-1] == 1 and self.map[rx, ry+1] == 1:
-                    self.map[rx, ry] = 1
+                if self.map.transparent[rx, ry]: continue
+                if self.map.transparent[rx, ry-1] and self.map.transparent[rx, ry+1]:
+                    self.map.transparent[rx, ry] = True
+                    self.map.walkable[rx, ry] = True
                     
         # Restore border of dungeon
-        self.map[0] = np.zeros(self.height, dtype=np.uint32)
-        self.map[self.width-1] = np.zeros(self.height, dtype = np.uint32)
-        self.map[:, 0] = np.zeros(self.width, dtype = np.uint32)
-        self.map[:, self.height-1] = np.zeros(self.width, dtype = np.uint32)
+        self.map.transparent[0] = np.zeros(self.height, dtype=np.bool)
+        self.map.walkable[0] = np.zeros(self.height, dtype=np.bool)
+        self.map.transparent[self.width-1] = np.zeros(self.height, dtype=np.bool)
+        self.map.walkable[self.width-1] = np.zeros(self.height, dtype=np.bool)
+        self.map.transparent[:, 0] = np.zeros(self.width, dtype=np.bool)
+        self.map.walkable[:, 0] = np.zeros(self.width, dtype=np.bool)
+        self.map.transparent[:, self.height-1] = np.zeros(self.width, dtype=np.bool)
+        self.map.walkable[:, self.height-1] = np.zeros(self.width, dtype=np.bool)
+        
         
         # Move player
         player_room = self.rooms[self.rng.randint(0, len(self.rooms)-1)]
@@ -235,42 +245,50 @@ class Dungeon:
         enemy_room = self.rooms[self.rng.randint(0, len(self.rooms)-1)]
         enemy.components[Position] = Position(enemy_room.x + self.rng.randint(1, enemy_room.width-2), enemy_room.y + self.rng.randint(1, enemy_room.height-2))
         enemy.components[Graphic] = Graphic(ord("F"), (255, 0, 0))
-        enemy.components[Enemy] = Enemy(path=tcod.path.AStar(cost=self.map, diagonal=0))
+        enemy.components[Enemy] = Enemy(path=tcod.path.AStar(cost=self.map))
         
         
             
     # https://www.roguebasin.com/index.php?title=Complete_Roguelike_Tutorial,_using_Python%2Blibtcod,_extras#BSP_Dungeon_Generator
-        
+    
+    
+    
     def vline(self, x, y1, y2):
         if y1 > y2:
             y1,y2 = y2,y1
 
         for y in range(y1,y2+1):
-            self.map[x, y] = 1
+            self.map.transparent[x, y] = True
+            self.map.walkable[x, y] = True    
         
     def vline_up(self, x, y):
-        while y >= 0 and self.map[x, y] == 0:
-            self.map[x, y] = 1
+        while y >= 0 and not self.map.transparent[x, y]:
+            self.map.transparent[x, y] = True
+            self.map.walkable[x, y] = True    
             y -= 1
             
     def vline_down(self, x, y):
-        while y < self.height and self.map[x, y] == 0:
-            self.map[x, y] = 1
+        while y < self.height and not self.map.transparent[x, y]:
+            self.map.transparent[x, y] = True
+            self.map.walkable[x, y] = True    
             y += 1
             
     def hline(self, x1, y, x2):
         if x1 > x2:
             x1,x2 = x2,x1
         for x in range(x1,x2+1):
-            self.map[x, y] = 1
+            self.map.transparent[x, y] = True
+            self.map.walkable[x, y] = True    
             
     def hline_left(self, x, y):
-        while x >= 0 and self.map[x, y] == 0:
-            self.map[x, y] = 1
+        while x >= 0 and not self.map.transparent[x, y]:
+            self.map.transparent[x, y] = True
+            self.map.walkable[x, y] = True    
             x -= 1
             
     def hline_right(self, x, y):
-        while x < self.width and self.map[x, y] == 0:
-            self.map[x, y] = 1
+        while x < self.width and not self.map.transparent[x, y]:
+            self.map.transparent[x, y] = True
+            self.map.walkable[x, y] = True    
             x += 1
                 
