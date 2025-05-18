@@ -7,6 +7,7 @@ from tcod.ecs import Entity
 import game.g as g
 import numpy as np
 from game.tags import IsPlayer
+import game.world_tools
 from random import Random
 import math
 import libtcodpy
@@ -25,14 +26,29 @@ class Position:
         x, y = direction
         return self.__class__(self.x + x, self.y + y)
 
-@attrs.define(frozen=True)
+@attrs.define(frozen=False)
 class Enemy:
     """Test enemy component"""
+    name: str
     path: tcod.path.AStar
-    def enemy_tick(self, player: Position, pos: Position):
+    noticed_player: bool = attrs.field(init=False)
+    
+    def __init__(self, name: str, path: tcod.path.AStar):
+        self.name = name
+        self.path = path
+        self.noticed_player = False
+    
+    def enemy_tick(self, player: Position, pos: Position, dungeon: game.world_tools.Dungeon):
+        if not self.noticed_player:
+            visible = tcod.map.compute_fov(transparency=dungeon.map.transparent, pov=(pos.x, pos.y), algorithm=2)
+            if visible[player.x, player.y]: 
+                self.noticed_player = True
+                g.log.add_item(f"A {self.name} spotted you!")
+            return (pos.x, pos.y) # Wait single tick even if visible to allow player to react
+        
         # Deal damage if within 1 space
         if abs(player.x - pos.x) <= 1 and abs(player.y - pos.y) <= 1:
-            print("Gotcha")
+            g.log.add_item(f"The {self.name} attacks!")
             return (pos.x, pos.y)
             
         # Move towards player otherwise

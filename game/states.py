@@ -74,7 +74,7 @@ class InGame(State):
         self.update_area_name("World of Wowzers")
         self.dungeon_floors = []
         # Play music
-        # if g.mixer:
+        # if hasattr(g, "mixer"):
         #     g.mixer.stop()
         # g.mixer = tcod.sdl.audio.BasicMixer(tcod.sdl.audio.open())
         # sound, sample_rate = soundfile.read("data/mus/mus_sadspiritiv.ogg")
@@ -84,6 +84,28 @@ class InGame(State):
     def update_area_name(self, name: str) -> None:
         self.area_name = name
     
+    def go_down_floor(self, exit_transfer_x: int, exit_transfer_y: int) -> None:
+        new_dungeon = game.world_tools.Dungeon(x=0, y=0, width=56, height=36, max_depth=6, seed=123444, exit_x=exit_transfer_x, exit_y=exit_transfer_y)
+        if len(self.dungeon_floors) == 0:
+            g.log.add_item("You venture into the dungeon.")
+        else:
+            g.log.add_item("You venture further into the dungeon.")
+        self.dungeon_floors.append(new_dungeon)
+        self.update_area_name(f"Floor {len(self.dungeon_floors)}")
+        
+        # Enemy tick when entering dungeon
+        (player,) = g.world.Q.all_of(components=[], tags=[IsPlayer])
+        player_pos = player.components[Position]
+        for enemy in new_dungeon.world.Q.all_of(components=[Enemy]):
+            dir = enemy.components[Enemy].enemy_tick(player=player_pos, pos=enemy.components[Position], dungeon=new_dungeon)
+            enemy.components[Position] = Position(dir[0], dir[1])
+        
+        
+    def go_up_floor(self) -> None:
+        g.log.add_item("You exit the dungeon floor.")
+        d = self.dungeon_floors.pop()
+        if len(self.dungeon_floors) > 0: self.update_area_name(f"Floor {len(self.dungeon_floors)}")
+        
     # Handle event draw
     def on_draw(self, console: tcod.console.Console) -> None:
         """Draw the standard screen."""
@@ -107,35 +129,11 @@ class InGame(State):
         else:
             self.overworld_draw(player_pos, console)
         
-        # Draw entities
-        for entity in world.Q.all_of(components=[Position, Graphic]):
-            if entity == player: continue
-            pos = entity.components[Position]
-            graphic = entity.components[Graphic]
-
-            if not (gameframe_left <= pos.x-offset_x < gameframe_right and gameframe_top <= pos.y-offset_y < gameframe_bottom): continue   # Ignore offscreen
-            console.rgb[["ch", "fg", "bg"]][pos.y-offset_y, pos.x-offset_x] = graphic.ch, graphic.fg, (0,0,0)
-        
         # Draw player
         console.rgb[["ch", "fg", "bg"]][player_pos.y-offset_y, player_pos.x-offset_x] = player.components[Graphic].ch, player.components[Graphic].fg, (0,0,0)
         
         # Draw GUI
         self.gui_draw(player_pos, console)
-    
-    def go_down_floor(self, exit_transfer_x: int, exit_transfer_y: int) -> None:
-        new_dungeon = game.world_tools.Dungeon(x=0, y=0, width=56, height=36, max_depth=6, seed=123444, exit_x=exit_transfer_x, exit_y=exit_transfer_y)
-        if len(self.dungeon_floors) == 0:
-            g.log.add_item("You venture into the dungeon.")
-        else:
-            g.log.add_item("You venture further into the dungeon.")
-        self.dungeon_floors.append(new_dungeon)
-        self.update_area_name(f"Floor {len(self.dungeon_floors)}")
-        
-        
-    def go_up_floor(self) -> None:
-        g.log.add_item("You exit the dungeon floor.")
-        d = self.dungeon_floors.pop()
-        if len(self.dungeon_floors) > 0: self.update_area_name(f"Floor {len(self.dungeon_floors)}")
     
     def dungeon_draw(self, dungeon: game.world_tools.Dungeon, console: tcod.console.Console) -> None:
         offset_x = -22
@@ -145,7 +143,8 @@ class InGame(State):
         (player,) = g.world.Q.all_of(components=[], tags=[IsPlayer])
         player_pos = player.components[Position]
         
-        mask = tcod.map.compute_fov(transparency=dungeon.map.transparent, pov=(player_pos.x, player_pos.y))
+        visible = tcod.map.compute_fov(transparency=dungeon.map.transparent, pov=(player_pos.x, player_pos.y), algorithm=2)
+        dungeon.explored |= visible.astype(np.uint32)
         
         for x in range(dungeon.width):
             for y in range(dungeon.height):    
@@ -153,24 +152,27 @@ class InGame(State):
                 dy = y-offset_y
                 if dx >= console.width or dy >= console.height or dx < 0 or dy < 0: continue
                 if not dungeon.map.transparent[max(0, x-1), y] and not dungeon.map.transparent[min(x+1, dungeon.width-1), y] and not dungeon.map.transparent[x, max(0, y-1)] and not dungeon.map.transparent[x, min(y+1, dungeon.height-1)]: continue
-                if not mask[x, y]: continue
-                col = (0, 255, 0)
-                ch = ord("#")
+                if not dungeon.explored[x, y]: continue
                 if dungeon.map.transparent[x, y]:
-                    col = (128, 128, 128)
+                    col = (128) if visible[x, y] else (0)
                     ch = ord(".")
-                        
-                #console.put_char(dx, dy, ch)
-                console.rgb[["ch", "fg"]][dy, dx] = ch, col
-        
-        #console.draw_frame(dungeon.door_room.x-offset_x, dungeon.door_room.y-offset_y, dungeon.door_room.width, dungeon.door_room.height, clear=False)
+                else:
+                    col = (0, 255, 0) if visible[x, y] else (64)
+                    ch = ord("#")
                     
-        # for node in dungeon.bsp.inverted_level_order():
-        #     if not node.children:
-        #         console.draw_frame(node.x-dungeon.bsp.x, node.y-dungeon.bsp.y, node.width, node.height, clear=False)
+                console.rgb[["ch", "fg"]][dy, dx] = ch, col
+                
+        # Draw entities
+        for entity in dungeon.world.Q.all_of(components=[Position, Graphic]):
+            if entity == player: continue
+            pos = entity.components[Position]
+            graphic = entity.components[Graphic]
+
+            if not visible[pos.x, pos.y]: continue
+            if not (gameframe_left <= pos.x-offset_x < gameframe_right and gameframe_top <= pos.y-offset_y < gameframe_bottom): continue   # Ignore offscreen
+            console.rgb[["ch", "fg", "bg"]][pos.y-offset_y, pos.x-offset_x] = graphic.ch, graphic.fg, (0,0,0)
                 
     def overworld_draw(self, player_pos: Position, console: tcod.console.Console) -> None:
-        
         lock_to_screen = True
         offset_x = player_pos.x - 49
         offset_y = player_pos.y - 20
@@ -213,6 +215,14 @@ class InGame(State):
                 ty = tiles.multi_index[1]
                 if not (0 <= tx+level.x-offset_x < 100 and 0 <= ty+level.y-offset_y < 50): continue   # Ignore offscreen
                 console.rgb[["ch", "fg"]][ty+level.y-offset_y, tx+level.x-offset_x] = ch, col
+                
+        # Draw entities
+        for entity in g.world.Q.all_of(components=[Position, Graphic]):
+            pos = entity.components[Position]
+            graphic = entity.components[Graphic]
+
+            if not (gameframe_left <= pos.x-offset_x < gameframe_right and gameframe_top <= pos.y-offset_y < gameframe_bottom): continue   # Ignore offscreen
+            console.rgb[["ch", "fg", "bg"]][pos.y-offset_y, pos.x-offset_x] = graphic.ch, graphic.fg, (0,0,0)
 
     def gui_draw(self, player_pos: Position, console: tcod.console.Console) -> None:
         # Windows
@@ -264,8 +274,8 @@ class InGame(State):
                 # Check for overworld collision
                 if len(self.dungeon_floors) == 0:
                     # Terrain
-                    # val = g.grid[28 + DIRECTION_KEYS[sym][0], 19 + DIRECTION_KEYS[sym][1]]
-                    # if val > NOISE_COLLISION_THRESH: return None
+                    val = g.grid[28 + DIRECTION_KEYS[sym][0], 19 + DIRECTION_KEYS[sym][1]]
+                    if val > NOISE_COLLISION_THRESH: return None
                     
                     # LDtk levels
                     found_level = False
@@ -284,7 +294,7 @@ class InGame(State):
                     
                     # Enemy movement
                     for enemy in world.Q.all_of(components=[Enemy]):
-                        dir = enemy.components[Enemy].enemy_tick(player=player_pos, pos=enemy.components[Position])
+                        dir = enemy.components[Enemy].enemy_tick(player=player_pos, pos=enemy.components[Position], dungeon=dungeon)
                         enemy.components[Position] = Position(dir[0], dir[1])
                 
                 

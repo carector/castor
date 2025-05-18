@@ -3,7 +3,7 @@ from __future__ import annotations
 from random import Random
 from tcod.ecs import Registry
 import tcod.ecs
-from game.components import Gold, Graphic, Position, Actor, LevelContainer, Transfer, Enemy
+import game.components as gc
 from game.tags import IsActor, IsItem, IsPlayer
 from game import g
 import attrs
@@ -22,19 +22,19 @@ def new_world() -> Registry:
     
     # Define player
     player = world[object()]
-    player.components[Position] = Position(-11, 5)
-    player.components[Graphic] = Graphic(ord("@"), fg=(255, 106, 0)) # 24 100 100
-    player.components[Gold] = 0
+    player.components[gc.Position] = gc.Position(-11, 5)
+    player.components[gc.Graphic] = gc.Graphic(ord("@"), fg=(255, 106, 0)) # 24 100 100
+    player.components[gc.Gold] = 0
     player.tags |= {IsPlayer, IsActor}
     
     # Actor test
     actor = world[object()]
-    actor.components[Actor] = Actor(
+    actor.components[gc.Actor] = gc.Actor(
         name="Evil sign", 
         text="Welcome to evil town. We're all evil here. We're really good at it.\n\nDon't test us.",
         choices={("O-okay, I'm sorry...", "Leave")})
-    actor.components[Graphic] = Graphic(ord("Φ"), fg=(127+32, 51+32, 0))
-    actor.components[Position] = Position(-8, 1)
+    actor.components[gc.Graphic] = gc.Graphic(ord("Φ"), fg=(127+32, 51+32, 0))
+    actor.components[gc.Position] = gc.Position(-8, 1)
     actor.tags |= {IsActor}
     
     # Dungeon entrance
@@ -50,7 +50,7 @@ def new_world() -> Registry:
         for name in files:
             level_data = json.loads(open(f"data/ldtk/data/{name}", 'r').read())
             level = world[object()]
-            level.components[LevelContainer] = LevelContainer(level_data, world=world)
+            level.components[gc.LevelContainer] = gc.LevelContainer(level_data, world=world)
     
     # Random gold placement
     # for _ in range(10):
@@ -75,6 +75,7 @@ class Dungeon:
     rooms: list[tcod.bsp.BSP] = attrs.field(init=False)
     door_room: tcod.bsp.BSP = attrs.field(init=False)
     map: tcod.map.Map = attrs.field(init=False)
+    explored: np.ndarray = attrs.field(init=False)
     rng: Random = attrs.field(init=False)
     bsp: tcod.bsp.BSP = attrs.field(init=False)
     world: tcod.ecs.Registry = attrs.field(init=False)
@@ -93,6 +94,7 @@ class Dungeon:
         self.bsp = tcod.bsp.BSP(x=x, y=y, width=width, height=height)
         self.map = np.zeros(shape=(width, height), dtype = np.uint32)
         self.map = tcod.map.Map(width=width, height=height, order='F')
+        self.explored = np.zeros(shape=(width, height), dtype=np.uint32, order='F')
         self.rooms = []
         self.world = Registry()
         
@@ -135,8 +137,6 @@ class Dungeon:
                     for dy in range(miny, maxy + 1):
                         self.map.transparent[dx, dy] = True
                         self.map.walkable[dx, dy] = True
-                        # 1 = unblocked, 0 = blocked
-                                                # TODO: Add attributes for `blocked`, `blocked_sight`, and `visited`
                                                 
                 self.rooms.append(node) #((minx + maxx) / 2, (miny + maxy) / 2))
                 
@@ -217,17 +217,17 @@ class Dungeon:
         # Move player
         player_room = self.rooms[self.rng.randint(0, len(self.rooms)-1)]
         (player,) = g.world.Q.all_of(components=[], tags=[IsPlayer])
-        player.components[Position] = Position(player_room.x + self.rng.randint(1, player_room.width-2), player_room.y + self.rng.randint(1, player_room.height-2))
+        player.components[gc.Position] = gc.Position(player_room.x + self.rng.randint(1, player_room.width-2), player_room.y + self.rng.randint(1, player_room.height-2))
         
         # Place entrance in same room as player
         up_door = self.world[object()]
-        up_door.components[Transfer] = Transfer(exit_x, exit_y, False)
+        up_door.components[gc.Transfer] = gc.Transfer(exit_x, exit_y, False)
         self.entrance = up_door
         
-        up_door.components[Position] = Position(player_room.x + self.rng.randint(1, player_room.width-2), player_room.y + self.rng.randint(1, player_room.height-2))
-        while(player.components[Position].x == up_door.components[Position].x and player.components[Position].y == up_door.components[Position].y):
-            up_door.components[Position] = Position(player_room.x + self.rng.randint(1, player_room.width-2), player_room.y + self.rng.randint(1, player_room.height-2))
-        up_door.components[Graphic] = Graphic(ord("<"), fg=(255, 255, 255))
+        up_door.components[gc.Position] = gc.Position(player_room.x + self.rng.randint(1, player_room.width-2), player_room.y + self.rng.randint(1, player_room.height-2))
+        while(player.components[gc.Position].x == up_door.components[gc.Position].x and player.components[gc.Position].y == up_door.components[gc.Position].y):
+            up_door.components[gc.Position] = gc.Position(player_room.x + self.rng.randint(1, player_room.width-2), player_room.y + self.rng.randint(1, player_room.height-2))
+        up_door.components[gc.Graphic] = gc.Graphic(ord("<"), fg=(255, 255, 255))
         
         # Place exit
         self.door_room = self.rooms[self.rng.randint(0, len(self.rooms)-1)]
@@ -235,17 +235,17 @@ class Dungeon:
             self.door_room = self.rooms[self.rng.randint(0, len(self.rooms)-1)]
             
         down_door = self.world[object()]
-        down_door.components[Position] = Position(self.door_room.x + self.rng.randint(1, self.door_room.width-2), self.door_room.y + self.rng.randint(1, self.door_room.height-2))
-        down_door.components[Graphic] = Graphic(ord(">"), fg=(255, 255, 255))
-        down_door.components[Transfer] = Transfer(0, 0, True)
+        down_door.components[gc.Position] = gc.Position(self.door_room.x + self.rng.randint(1, self.door_room.width-2), self.door_room.y + self.rng.randint(1, self.door_room.height-2))
+        down_door.components[gc.Graphic] = gc.Graphic(ord(">"), fg=(255, 255, 255))
+        down_door.components[gc.Transfer] = gc.Transfer(0, 0, True)
         self.exit = down_door
         
         # Place test enemy
         enemy = self.world[object()]
         enemy_room = self.rooms[self.rng.randint(0, len(self.rooms)-1)]
-        enemy.components[Position] = Position(enemy_room.x + self.rng.randint(1, enemy_room.width-2), enemy_room.y + self.rng.randint(1, enemy_room.height-2))
-        enemy.components[Graphic] = Graphic(ord("F"), (255, 0, 0))
-        enemy.components[Enemy] = Enemy(path=tcod.path.AStar(cost=self.map))
+        enemy.components[gc.Position] = gc.Position(enemy_room.x + self.rng.randint(1, enemy_room.width-2), enemy_room.y + self.rng.randint(1, enemy_room.height-2))
+        enemy.components[gc.Graphic] = gc.Graphic(ord("F"), (255, 0, 0))
+        enemy.components[gc.Enemy] = gc.Enemy(name="Foul Beast", path=tcod.path.AStar(cost=self.map))
         
         
             
