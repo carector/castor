@@ -52,14 +52,14 @@ COLOR_PALLETE: Final = {
     7: (232, 183, 150)
 }
 
-gameframe_left: Final = 21
-gameframe_right: Final = 79
-gameframe_top: Final = 1
-gameframe_bottom: Final = 39
+GAMEFRAME_LEFT: Final = 21
+GAMEFRAME_RIGHT: Final = 79
+GAMEFRAME_TOP: Final = 1
+GAMEFRAME_BOTTOM: Final = 39
 
-logframe_bottom: Final = 49
-logframe_top: Final = 41
-logframe_left: Final = 21
-logframe_right: Final = 79
+LOGFRAME_LEFT: Final = 21
+LOGFRAME_RIGHT: Final = 79
+LOGFRAME_TOP: Final = 41
+LOGFRAME_BOTTOM: Final = 49
 
 NOISE_COLLISION_THRESH = 0.5

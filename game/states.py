@@ -10,7 +10,7 @@ from tcod.event import KeySym
 import game.constants
 import game.g as g
 from game.components import Gold, Graphic, Position, Actor, LevelContainer, Transfer, Enemy
-from game.constants import DIRECTION_KEYS, NOISE_COLLISION_THRESH, gameframe_left, gameframe_right, gameframe_top, gameframe_bottom, logframe_bottom, logframe_top, logframe_right, logframe_left
+from game.constants import DIRECTION_KEYS, NOISE_COLLISION_THRESH, GAMEFRAME_LEFT, GAMEFRAME_RIGHT, GAMEFRAME_TOP, GAMEFRAME_BOTTOM, LOGFRAME_BOTTOM, LOGFRAME_TOP, LOGFRAME_RIGHT, LOGFRAME_LEFT
 from game.tags import IsItem, IsPlayer
 from game.state import State, StateResult, Pop, Push, Reset
 import game.menus
@@ -169,7 +169,7 @@ class InGame(State):
             graphic = entity.components[Graphic]
 
             if not visible[pos.x, pos.y]: continue
-            if not (gameframe_left <= pos.x-offset_x < gameframe_right and gameframe_top <= pos.y-offset_y < gameframe_bottom): continue   # Ignore offscreen
+            if not (GAMEFRAME_LEFT <= pos.x-offset_x < GAMEFRAME_RIGHT and GAMEFRAME_TOP <= pos.y-offset_y < GAMEFRAME_BOTTOM): continue   # Ignore offscreen
             console.rgb[["ch", "fg", "bg"]][pos.y-offset_y, pos.x-offset_x] = graphic.ch, graphic.fg, (0,0,0)
                 
     def overworld_draw(self, player_pos: Position, console: tcod.console.Console) -> None:
@@ -193,11 +193,16 @@ class InGame(State):
         for pos in it:
             ch = ord("^")
             col = (0, 128, 0)
+            rand = int(g.noise.get_point(offset_y + it.multi_index[1], offset_x + it.multi_index[0])*4)
+            
             if(pos < -0.25): 
-                rand = int(g.noise.get_point(offset_y + it.multi_index[1], offset_x + it.multi_index[0])*4)
                 ch = ord(chars[rand%4])
                 col = (0, cols[rand%4], 0)
-            elif(pos <= 0): col = (153, 141, 85)
+            elif(pos <= 0): 
+                col = (153, 141, 85)
+            # else:
+            #     col = (153, 141, 85)
+                
             if(pos > NOISE_COLLISION_THRESH): ch = 0x2660
             console.rgb[["ch", "fg"]][it.multi_index[1], it.multi_index[0]] = ch, col
                 
@@ -221,7 +226,7 @@ class InGame(State):
             pos = entity.components[Position]
             graphic = entity.components[Graphic]
 
-            if not (gameframe_left <= pos.x-offset_x < gameframe_right and gameframe_top <= pos.y-offset_y < gameframe_bottom): continue   # Ignore offscreen
+            if not (GAMEFRAME_LEFT <= pos.x-offset_x < GAMEFRAME_RIGHT and GAMEFRAME_TOP <= pos.y-offset_y < GAMEFRAME_BOTTOM): continue   # Ignore offscreen
             console.rgb[["ch", "fg", "bg"]][pos.y-offset_y, pos.x-offset_x] = graphic.ch, graphic.fg, (0,0,0)
 
     def gui_draw(self, player_pos: Position, console: tcod.console.Console) -> None:
