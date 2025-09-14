@@ -6,7 +6,7 @@ import tcod.ecs.callbacks
 from tcod.ecs import Entity
 import game.g as g
 import numpy as np
-from game.tags import IsPlayer
+from game.tags import IsPlayer, IsActor
 import game.world_tools
 from random import Random
 import math
@@ -147,6 +147,13 @@ class LevelContainer:
                 case "transfer":
                     e.components[Transfer] = Transfer(0, 0, True)
                     e.components[Graphic] = Graphic(ch=ord(">"))
+                case "actor":
+                    text = next(x for x in entity["field_instances"] if x["id"] == "Text")["value"]
+                    name = next(x for x in entity["field_instances"] if x["id"] == "Name")["value"]
+                    msg = next(x for x in entity["field_instances"] if x["id"] == "InteractMessage")["value"]                    
+                    e.components[Actor] = Actor(name=name, text=text, interact_msg=msg)
+                    e.tags |= {IsActor}
+                    
     
     # Top left corner is (0, 0) level local space
     # def level_visible(self, x: int, y: int, w: int, h: int) -> bool:
