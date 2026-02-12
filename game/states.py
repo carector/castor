@@ -279,8 +279,8 @@ class InGame(State):
                 # Check for overworld collision
                 if len(self.dungeon_floors) == 0:
                     # Terrain
-                    val = g.grid[28 + DIRECTION_KEYS[sym][0], 19 + DIRECTION_KEYS[sym][1]]
-                    if val > NOISE_COLLISION_THRESH: return None
+                    #val = g.grid[28 + DIRECTION_KEYS[sym][0], 19 + DIRECTION_KEYS[sym][1]]
+                    #if val > NOISE_COLLISION_THRESH: return None
                     
                     # LDtk levels
                     found_level = False

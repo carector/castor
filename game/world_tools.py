@@ -4,7 +4,7 @@ from random import Random
 from tcod.ecs import Registry
 import tcod.ecs
 import game.components as gc
-from game.tags import IsActor, IsItem, IsPlayer
+from game.tags import IsActor, IsItem, IsPlayer 
 from game import g
 import attrs
 import tcod.noise
